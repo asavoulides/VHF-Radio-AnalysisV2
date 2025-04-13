@@ -1,0 +1,4 @@
+TODO: 
+
+Transcribe Audio Files
+    Append "NEXT TRANSMISSION" after each file (each file reflects a new TRANSMISSION)
