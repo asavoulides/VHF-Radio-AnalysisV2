@@ -10,19 +10,19 @@ load_dotenv()
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 
 # Path to the audio file
-# AUDIO_FILE = r"C:\ProScan\Recordings\04-13-25\Middlesex\04-13-25 00-08-11 - Middlesex - Police Department.mp3"
+# audioPath = r"C:\ProScan\Recordings\04-13-25\Middlesex\04-13-25 00-08-11 - Middlesex - Police Department.mp3"
 
 
 def getPrompt(promptName):
     with open(f"Prompts/{promptName}", "r", encoding="utf-8") as file:
         return file.read()
 
-def getTranscript(AUDIO_FILE):
+def getTranscript(audioPath):
     try:
         # Create Deepgram client using the API key
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
 
-        with open(AUDIO_FILE, "rb") as file:
+        with open(audioPath, "rb") as file:
             buffer_data = file.read()
 
         payload: FileSource = {
