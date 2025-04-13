@@ -13,6 +13,10 @@ DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 # AUDIO_FILE = r"C:\ProScan\Recordings\04-13-25\Middlesex\04-13-25 00-08-11 - Middlesex - Police Department.mp3"
 
 
+def getPrompt(promptName):
+    with open(f"Prompts/{promptName}", "r", encoding="utf-8") as file:
+        return file.read()
+
 def getTranscript(AUDIO_FILE):
     try:
         # Create Deepgram client using the API key
@@ -47,9 +51,13 @@ def LLM_REQ(text):
     response = client.responses.create(
         model="gpt-4o",
         input=[
-            {"role": "user", 
-            "content": [{"type": "input_text", "text": text}]
+            {
+            "role": "system",
+            "content": [{"type": "input_text", "text": "You are an analyser"}],
             },
+
+            {"role": "user", 
+             "content": [{"type": "input_text", "text": text}]},
         ],
         text={"format": {"type": "text"}},
         reasoning={},
@@ -62,4 +70,3 @@ def LLM_REQ(text):
     return response.output[0].content[0].text
 
 
-print(LLM_REQ("fda"))
