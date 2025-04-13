@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from deepgram import DeepgramClient, PrerecordedOptions, FileSource
+from openai import OpenAI
 
 # Load environment variables from .env file
 load_dotenv()
@@ -9,7 +10,7 @@ load_dotenv()
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 
 # Path to the audio file
-#AUDIO_FILE = r"C:\ProScan\Recordings\04-13-25\Middlesex\04-13-25 00-08-11 - Middlesex - Police Department.mp3"
+# AUDIO_FILE = r"C:\ProScan\Recordings\04-13-25\Middlesex\04-13-25 00-08-11 - Middlesex - Police Department.mp3"
 
 
 def getTranscript(AUDIO_FILE):
@@ -39,3 +40,26 @@ def getTranscript(AUDIO_FILE):
     except Exception as e:
         print(f"Exception: {e}")
 
+
+def LLM_REQ(text):
+    client = OpenAI()
+
+    response = client.responses.create(
+        model="gpt-4o",
+        input=[
+            {"role": "user", 
+            "content": [{"type": "input_text", "text": text}]
+            },
+        ],
+        text={"format": {"type": "text"}},
+        reasoning={},
+        tools=[],
+        temperature=1,
+        max_output_tokens=2048,
+        top_p=1,
+        store=True,
+    )
+    return response.output[0].content[0].text
+
+
+print(LLM_REQ("fda"))
