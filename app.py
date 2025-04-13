@@ -4,13 +4,26 @@ import json
 from data import AudioMetadata
 import api
 
-metaData = AudioMetadata()
+Data = AudioMetadata()
+
 
 # Required for file structure used
 def GetPathForRecordingsToday():
     now = datetime.now()
-    formatted_date = f"{now.month}-{now.day}-{now.year % 100}"
-    return f"C:/ProScan/Recordings/{formatted_date}/Middlesex/04-13-25 00-08-11 - Middlesex - Police Department.mp3"
+    formatted_date = f"{now.month:02d}-{now.day:02d}-{now.year % 100:02d}"
+    return f"C:/ProScan/Recordings/{formatted_date}/Middlesex/"
+
+
+def GetAllFilesForToday():
+    target_dir = GetPathForRecordingsToday()
+    all_files = []
+
+    for dirpath, dirnames, filenames in os.walk(target_dir):
+        for filename in filenames:
+            full_path = os.path.join(dirpath, filename)
+            all_files.append(full_path)
+
+    return all_files
 
 
 def GetTimeCreated(filepath):
@@ -20,8 +33,22 @@ def GetTimeCreated(filepath):
 
 
 def main():
-    metaData.clear()
-    print(api.getTranscript(GetPathForRecordingsToday()))
+    files = GetAllFilesForToday()
+
+    for filepath in files:
+        if filepath.lower().endswith(".mp3"):
+            # Use just the filename (not full path) as the key in the JSON
+            filename = os.path.basename(filepath)
+
+            # Get time and transcript
+            created_time = GetTimeCreated(filepath)
+            transcript = api.getTranscript(filepath)
+
+            # Add to Data
+            Data.add_time(filename, created_time)
+            Data.add_transcript(filename, transcript)
+
+
 
 
 
