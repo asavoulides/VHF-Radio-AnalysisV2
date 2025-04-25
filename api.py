@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from deepgram import DeepgramClient, PrerecordedOptions, FileSource
 from openai import OpenAI
+from utils import getPrompt
 
 # Load environment variables from .env file
 load_dotenv()
@@ -12,10 +13,6 @@ DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 # Path to the audio file
 # audioPath = r"C:\ProScan\Recordings\04-13-25\Middlesex\04-13-25 00-08-11 - Middlesex - Police Department.mp3"
 
-
-def getPrompt(promptName):
-    with open(f"Prompts/{promptName}", "r", encoding="utf-8") as file:
-        return file.read()
 
 def getTranscript(audioPath):
     try:
@@ -53,7 +50,7 @@ def LLM_REQ(text):
         input=[
             {
             "role": "system",
-            "content": [{"type": "input_text", "text": "You are an analyser"}],
+            "content": [{"type": "input_text", "text": getPrompt("system")}],
             },
 
             {"role": "user", 
@@ -68,5 +65,3 @@ def LLM_REQ(text):
         store=True,
     )
     return response.output[0].content[0].text
-
-

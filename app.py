@@ -1,13 +1,14 @@
 from datetime import datetime
 import os
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from data import AudioMetadata
 import api
+from utils import getPrompt
 
 Data = AudioMetadata()
 
 
-# Required for file structure used
 def GetPathForRecordingsToday():
     now = datetime.now()
     formatted_date = f"{now.month:02d}-{now.day:02d}-{now.year % 100:02d}"
@@ -17,39 +18,60 @@ def GetPathForRecordingsToday():
 def GetAllFilesForToday():
     target_dir = GetPathForRecordingsToday()
     all_files = []
-
     for dirpath, dirnames, filenames in os.walk(target_dir):
         for filename in filenames:
-            full_path = os.path.join(dirpath, filename)
-            all_files.append(full_path)
-
+            if filename.lower().endswith(".mp3"):
+                full_path = os.path.join(dirpath, filename)
+                all_files.append(full_path)
     return all_files
 
 
 def GetTimeCreated(filepath):
-    unixTime = os.path.getctime(filepath)
-    dt = datetime.fromtimestamp(unixTime)
-    return dt.strftime("%H:%M:%S")  # Format without microseconds
+    return os.path.getctime(filepath)  # Return raw timestamp for sorting
+
+
+def process_file(filepath):
+    filename = os.path.basename(filepath)
+
+    existing_metadata = Data.get_metadata(filename)
+    if "Transcript" in existing_metadata:
+        print(f"[Thread] Skipping {filename}, already transcribed.")
+        return None  # Skip if already processed
+
+    print(f"[Thread] Transcribing {filename}")
+    created_time = datetime.fromtimestamp(GetTimeCreated(filepath)).strftime("%H:%M:%S")
+    transcript = api.getTranscript(filepath)
+
+    return {"filename": filename, "time": created_time, "transcript": transcript}
 
 
 def main():
     files = GetAllFilesForToday()
 
-    for filepath in files:
-        if filepath.lower().endswith(".mp3"):
-            # Use just the filename (not full path) as the key in the JSON
-            filename = os.path.basename(filepath)
+    # Sort files by creation time before processing
+    files_sorted = sorted(files, key=GetTimeCreated)
 
-            # Get time and transcript
-            created_time = GetTimeCreated(filepath)
-            transcript = api.getTranscript(filepath)
+    results = []
 
-            # Add to Data
-            Data.add_time(filename, created_time)
-            Data.add_transcript(filename, transcript)
+    max_threads = 10
+    with ThreadPoolExecutor(max_workers=max_threads) as executor:
+        futures = {executor.submit(process_file, f): f for f in files_sorted}
+
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                results.append(result)
+
+    # Sort results again just in case (since threads complete out of order)
+    results_sorted = sorted(results, key=lambda x: x["time"])
+
+    # Save in chronological order
+    for item in results_sorted:
+        Data.add_time(item["filename"], item["time"])
+        Data.add_transcript(item["filename"], item["transcript"])
+
+    # api.LLM_REQ(prepareLLMReq())
 
 
-
-
-
-main()
+if __name__ == "__main__":
+    main()

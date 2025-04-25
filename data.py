@@ -1,10 +1,19 @@
 import json
 import os
+from datetime import datetime
 
 
 class AudioMetadata:
-    def __init__(self, filepath="metadata.json"):
-        self.filepath = filepath
+    def __init__(self):
+        # Ensure "archives" directory exists
+        self.directory = "Logs"
+        os.makedirs(self.directory, exist_ok=True)
+
+        # Generate filename based on current date (day,month,year)
+        today = datetime.now()
+        date_str = f"{today.day}-{today.month}-{today.year}"
+        self.filepath = os.path.join(self.directory, f"{date_str}.json")
+
         self.data = self._load()
 
     def _load(self):
