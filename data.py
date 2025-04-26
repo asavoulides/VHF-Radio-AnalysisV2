@@ -5,11 +5,9 @@ from datetime import datetime
 
 class AudioMetadata:
     def __init__(self):
-        # Ensure "archives" directory exists
         self.directory = "Logs"
         os.makedirs(self.directory, exist_ok=True)
 
-        # Generate filename based on current date (day,month,year)
         today = datetime.now()
         date_str = f"{today.month}-{today.day}-{today.year}"
         self.filepath = os.path.join(self.directory, f"{date_str}.json")
@@ -45,6 +43,11 @@ class AudioMetadata:
         return self.data
 
     def clear(self):
-        """Clear all existing metadata and overwrite the JSON file."""
         self.data = {}
+        self._save()
+
+    def reload(self):
+        """Reload the data from the JSON file to get latest updates."""
+        self.data = self._load()
+
         self._save()

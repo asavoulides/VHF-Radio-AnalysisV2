@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 from deepgram import DeepgramClient, PrerecordedOptions, FileSource
 from openai import OpenAI
-from utils import getPrompt
 
 # Load environment variables from .env file
 load_dotenv()
@@ -50,7 +49,8 @@ def LLM_REQ(text):
         input=[
             {
             "role": "system",
-            "content": [{"type": "input_text", "text": getPrompt("system")}],
+            "content": [{"type": "input_text", "text": "You are an AI assistant summarizing live police and fire department incidents based on radio transcripts. Provide concise and clear overviews."}],
+
             },
 
             {"role": "user", 
