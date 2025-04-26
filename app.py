@@ -5,6 +5,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from data import AudioMetadata
 import api
 from utils import getPrompt
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import time
 
 Data = AudioMetadata()
 
@@ -73,5 +76,31 @@ def main():
     # api.LLM_REQ(prepareLLMReq())
 
 
+class NewFileHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        if not event.is_directory:
+            print(f"New file detected: {event.src_path}")
+            main()
+
+
+def monitor_directory(path):
+    event_handler = NewFileHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path=path, recursive=False)
+    observer.start()
+    print(f"Started monitoring: {path}")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+        print("Stopped monitoring.")
+    observer.join()
+
+
+
+
 if __name__ == "__main__":
     main()
+    monitor_directory(GetPathForRecordingsToday)
