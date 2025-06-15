@@ -3,10 +3,10 @@
 **Project Objective**
 Project is intended to add new functionalities to ProScan, a software used to organize data coming out of UHF/VHF radios such as the Uniden SDS 200. 
 
-*Intended Additions*
-Transcription Model
-Compacting Long Term Storage
-AI Overview About Events,
+*Intended Additions* <br>
+Transcription Model <br>
+Compacting Long Term Storage <br>
+AI Overview About Events, 
 
 Data Flow:
 
