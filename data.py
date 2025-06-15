@@ -12,6 +12,7 @@ class AudioMetadata:
         # Generate filename based on current date (day,month,year)
         today = datetime.now()
         date_str = f"{today.month}-{today.day}-{today.year}"
+
         self.filepath = os.path.join(self.directory, f"{date_str}.json")
 
         self.data = self._load()

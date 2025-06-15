@@ -56,7 +56,7 @@ def main():
 
     results = []
 
-    max_threads = 10
+    max_threads = 40
     with ThreadPoolExecutor(max_workers=max_threads) as executor:
         futures = {executor.submit(process_file, f): f for f in files_sorted}
 
@@ -76,31 +76,8 @@ def main():
     # api.LLM_REQ(prepareLLMReq())
 
 
-class NewFileHandler(FileSystemEventHandler):
-    def on_created(self, event):
-        if not event.is_directory:
-            print(f"New file detected: {event.src_path}")
-            main()
-
-
-def monitor_directory(path):
-    event_handler = NewFileHandler()
-    observer = Observer()
-    observer.schedule(event_handler, path=path, recursive=False)
-    observer.start()
-    print(f"Started monitoring: {path}")
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-        print("Stopped monitoring.")
-    observer.join()
-
 
 
 
 if __name__ == "__main__":
     main()
-    monitor_directory(GetPathForRecordingsToday)
