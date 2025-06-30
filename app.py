@@ -1,45 +1,41 @@
 from datetime import datetime
 import os
-import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from data import AudioMetadata
 import api
-from utils import getPrompt
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-import time
 
 Data = AudioMetadata()
 
 
-def GetPathForRecordingsToday():
-    now = datetime.now()
-    formatted_date = f"{now.month:02d}-{now.day:02d}-{now.year % 100:02d}"
-    return f"C:/ProScan/Recordings/{formatted_date}/Middlesex/"
+def GetPathForRecordingsToday() -> str:
+    today = datetime.now()
+    formatted = f"{today.month:02d}-{today.day:02d}-{today.year % 100:02d}"
+    return os.path.join("C:/ProScan/Recordings", formatted)
 
 
-def GetAllFilesForToday():
-    target_dir = GetPathForRecordingsToday()
+def GetAllFilesForToday() -> list[str]:
+    root_dir = GetPathForRecordingsToday()
     all_files = []
-    for dirpath, dirnames, filenames in os.walk(target_dir):
+
+    for dirpath, _, filenames in os.walk(root_dir):
         for filename in filenames:
             if filename.lower().endswith(".mp3"):
-                full_path = os.path.join(dirpath, filename)
-                all_files.append(full_path)
+                all_files.append(os.path.join(dirpath, filename))
+
     return all_files
 
 
-def GetTimeCreated(filepath):
-    return os.path.getctime(filepath)  # Return raw timestamp for sorting
+def GetTimeCreated(filepath: str) -> float:
+    return os.path.getctime(filepath)
 
 
-def process_file(filepath):
+def process_file(filepath: str):
     filename = os.path.basename(filepath)
+    meta = Data.get_metadata(filename)
 
-    existing_metadata = Data.get_metadata(filename)
-    if "Transcript" in existing_metadata:
+    if "Transcript" in meta:
         print(f"[Thread] Skipping {filename}, already transcribed.")
-        return None  # Skip if already processed
+        return None
 
     print(f"[Thread] Transcribing {filename}")
     created_time = datetime.fromtimestamp(GetTimeCreated(filepath)).strftime("%H:%M:%S")
@@ -49,34 +45,20 @@ def process_file(filepath):
 
 
 def main():
-    files = GetAllFilesForToday()
-
-    # Sort files by creation time before processing
-    files_sorted = sorted(files, key=GetTimeCreated)
-
+    files = sorted(GetAllFilesForToday(), key=GetTimeCreated)
     results = []
 
-    max_threads = 40
-    with ThreadPoolExecutor(max_workers=max_threads) as executor:
-        futures = {executor.submit(process_file, f): f for f in files_sorted}
+    with ThreadPoolExecutor(max_workers=40) as executor:
+        futures = {executor.submit(process_file, f): f for f in files}
 
         for future in as_completed(futures):
             result = future.result()
             if result:
                 results.append(result)
 
-    # Sort results again just in case (since threads complete out of order)
-    results_sorted = sorted(results, key=lambda x: x["time"])
-
-    # Save in chronological order
-    for item in results_sorted:
+    for item in sorted(results, key=lambda x: x["time"]):
         Data.add_time(item["filename"], item["time"])
         Data.add_transcript(item["filename"], item["transcript"])
-
-    # api.LLM_REQ(prepareLLMReq())
-
-
-
 
 
 if __name__ == "__main__":
