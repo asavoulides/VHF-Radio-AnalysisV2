@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from deepgram import DeepgramClient, PrerecordedOptions, FileSource
 from openai import OpenAI
 from utils import getPrompt
-
 # Load environment variables from .env file
 load_dotenv()
 
