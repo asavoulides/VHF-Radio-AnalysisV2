@@ -53,15 +53,13 @@ ProScan stores recordings in folders by date. This script processes only todayâ€
 ## ðŸ“„ Sample Output
 
 ```json
-{
-  "filename": "FireDept_E3_07-01-25_01-06-30.mp3",
-  "time": "01:06:30",
-  "transcript": "Unit 3 responding to a structure fire at Main and Elm.",
-  "system": "Massachusetts State Police",
-  "department": "Fire Department",
-  "channel": "Engine 3",
-  "filepath": "C:/Proscan/Recordings/07-01-25/FireDept_E3_07-01-25_01-06-30.mp3"
-}
+"Massachusetts State Police; Troop H- Boston (Local); Tunnel Dispatch - H9; #28.mp3": {
+  "Time": "02:01:13",
+  "Transcript": "",
+  "System": "Massachusetts State Police",
+  "Department": "Troop H- Boston (Local)",
+  "Channel": "Tunnel Dispatch - H9",
+  "Filepath": "C:/Proscan/Recordings\\07-01-25\\Massachusetts State Police\\Massachusetts State Police; Troop H- Boston (Local); Tunnel Dispatch - H9; #28.mp3"
 ```
 
 ---
