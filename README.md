@@ -4,22 +4,22 @@ A high-performance Python tool for transcribing and tagging real-time police and
 
 ---
 
-## 🚀 Features
+##  Features
 
-- 🔍 **Real-Time Monitoring**: Detects and transcribes new `.mp3` scanner recordings as they appear  
-- 🧠 **Automated Transcription**: Uses `api.getTranscript()` to convert speech to text  
-- 🗂 **Metadata Enrichment**: Classifies each recording by:  
+- **Real-Time Monitoring**: Detects and transcribes new `.mp3` scanner recordings as they appear  
+- **Automated Transcription**: Uses `api.getTranscript()` to convert speech to text  
+- **Metadata Enrichment**: Classifies each recording by:  
   - System  
   - Department  
   - Channel  
-- 🧾 **Transcript Tracking**: Avoids reprocessing already-transcribed files  
-- ⚡ **Multithreaded Processing**: Fast startup with up to 40 transcription threads  
-- 🧵 **Thread-Safe File Handling**: Locks and watches files to avoid premature processing  
-- 📦 **Modular Codebase**: Easily extendable for UI, database, or analytics integration  
+- **Transcript Tracking**: Avoids reprocessing already-transcribed files  
+- **Multithreaded Processing**: Fast startup with up to 40 transcription threads  
+- **Thread-Safe File Handling**: Locks and watches files to avoid premature processing  
+- **Modular Codebase**: Easily extendable for UI, database, or analytics integration  
 
 ---
 
-## 🧱 Folder Structure
+##  Folder Structure
 
 ```
 C:/Proscan/Recordings/
@@ -33,7 +33,7 @@ ProScan stores recordings in folders by date. This script processes only today�
 
 ---
 
-## ⚙️ How It Works
+##  How It Works
 
 ### 1. Startup Phase
 
@@ -50,7 +50,7 @@ ProScan stores recordings in folders by date. This script processes only today�
 
 ---
 
-## 📄 Sample Output
+##  Sample Output
 
 ```json
 "Massachusetts State Police; Troop H- Boston (Local); Tunnel Dispatch - H9; #28.mp3": {
@@ -64,7 +64,7 @@ ProScan stores recordings in folders by date. This script processes only today�
 
 ---
 
-## 📂 File Overview
+##  File Overview
 
 - `app.py`: Main runner that handles scanning, threading, and transcription  
 - `data.py`: Contains `AudioMetadata`, a class for managing transcript metadata  
@@ -77,7 +77,7 @@ ProScan stores recordings in folders by date. This script processes only today�
 
 ---
 
-## 🔧 Requirements
+##  Requirements
 
 To run this project, ensure you have:
 
@@ -93,7 +93,7 @@ pip install -r requirements.txt
 
 ---
 
-## 🚀 Usage
+##  Usage
 
 1. Clone the repository:
 
@@ -108,11 +108,11 @@ cd proscan-transcriber
 python app.py
 ```
 
-> ⚠️ Make sure ProScan is running and actively recording.
+>  Make sure ProScan is running and actively recording.
 
 ---
 
-## 🔍 Ideal Use Cases
+##  Ideal Use Cases
 
 - Live dashboard for police/fire activity  
 - Searchable transcript archive  
@@ -120,24 +120,3 @@ python app.py
 - Transparent dispatch monitoring for journalism or policy  
 
 ---
-
-## 🛠 Future Ideas
-
-- 🧮 SQLite or MongoDB backend  
-- 🌐 Flask or FastAPI integration for UI  
-- 🔊 Audio player synced with transcript lines  
-- 🧠 Keyword scoring and prioritization  
-
----
-
-## 👨‍💻 Author
-
-**Alexander Savoulides**  
-📍 Newton, MA  
-✉️ alexandersavoulides@gmail.com
-
----
-
-## 📄 License
-
-MIT License. See [`LICENSE`](./LICENSE) for details.
