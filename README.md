@@ -109,6 +109,15 @@ DEEPGRAM_API_KEY=your_key_here
 Dependencies should be added to a `requirements.txt` file for installation.
 
 ---
+## Currently in development
+
+- GUI with analytics
+
+## Future Ideas
+
+- LLM Summaries
+- Localized transcription model (to avoid API fees)
+- Add "white noise" to beginning of every clip prior to transcription, may improve transcription accuracy
 
 ## Contact
 
