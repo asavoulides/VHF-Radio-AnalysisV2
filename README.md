@@ -13,7 +13,7 @@ This project provides a high-performance, real-time transcription pipeline for a
 
 ---
 
-## Folder Structure
+## Folder Structure by ProScan
 
 ```
 /Proscan/Recordings/
