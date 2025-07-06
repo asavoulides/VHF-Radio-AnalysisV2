@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import time
 
+
 def get_most_recent_file(root_dir: str, extension: str = ".mp3") -> str | None:
     newest_file = None
     newest_mtime = 0
@@ -20,38 +21,28 @@ def get_most_recent_file(root_dir: str, extension: str = ".mp3") -> str | None:
     return newest_file
 
 
+def is_file_locked(path):
+    try:
+        with open(path, "a+b") as f:
+            f.seek(0, os.SEEK_END)
+            original_size = f.tell()
+
+            # Temporarily append a byte and immediately undo it
+            f.write(b"_")
+            f.flush()
+            f.truncate(original_size)
+        return False
+    except Exception:
+        return True
+
+
 def wait_until_file_complete(path):
-    print(f"Checking for file: {path}")
 
-    if not os.path.exists(path):
-        print("File not found. Waiting...")
-        while not os.path.exists(path):
-            time.sleep(0.5)
-        print("File showed up.")
-
-    print("Watching file size...")
-    last_size = os.path.getsize(path)
-    print(f"Starting size: {last_size} bytes")
-    last_change = time.time()
-
-    while True:
+    while is_file_locked(path):
+        print(f"{path} is locked... waiting")
         time.sleep(1)
-        try:
-            current_size = os.path.getsize(path)
-        except FileNotFoundError:
-            print("File disappeared. Waiting again...")
-            continue
 
-        if current_size == last_size:
-            stable_for = time.time() - last_change
-            print(f"No change. Stable for {stable_for:.1f} seconds.")
-            if stable_for > 3:
-                print("File is done.")
-                return
-        else:
-            print(f"Size changed: {last_size} -> {current_size}")
-            last_size = current_size
-            last_change = time.time()
+    print("✅ File is unlocked and ready.")
 
 
 def wait_for_new_file(directory):
@@ -68,11 +59,11 @@ def wait_for_new_file(directory):
                 if path not in seen:
                     return path
 
+
 def getFilename():
     today = datetime.now()
     date_str = f"{today.month}-{today.day}-{today.year}"
     return date_str
-
 
 
 def _split_parts(filename):
