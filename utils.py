@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import time
+from pydub import AudioSegment
 
 
 def get_most_recent_file(root_dir: str, extension: str = ".mp3") -> str | None:
@@ -90,6 +91,13 @@ def get_channel(filename):
     if len(parts) >= 3:
         return parts[2]
     return ""
+
+
+def prependTime(path):
+    audio = AudioSegment.from_file(path)
+    silence = AudioSegment.silent(duration=500)  # 1 second
+    combined = silence + audio
+    combined.export(path, format=path.split(".")[-1])
 
 
 def getPrompt(text):

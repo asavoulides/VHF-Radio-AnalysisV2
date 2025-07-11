@@ -6,7 +6,8 @@ import utils
 
 class AudioMetadata:
     def __init__(self):
-        self.directory = "Logs"
+        #self.directory = "Logs"
+        self.directory= "C:\\Users\\alexa\\OneDrive\\Desktop\\Folders\\Scripts\\Python\\Local Police Scanner Analysis\\Logs"
         os.makedirs(self.directory, exist_ok=True)
         date_str = utils.getFilename()
         self.filepath = os.path.join(self.directory, f"{date_str}.json")
