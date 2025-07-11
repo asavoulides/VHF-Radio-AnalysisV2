@@ -1,0 +1,4 @@
+deepgram-sdk
+openai
+python-dotenv
+pydub
