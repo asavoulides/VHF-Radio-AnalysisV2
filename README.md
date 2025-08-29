@@ -105,10 +105,9 @@ DEEPGRAM_API_KEY=your_key_here
 - `deepgram-sdk`
 - `openai`
 - `python-dotenv`
-
-Dependencies should be added to a `requirements.txt` file for installation.
-
+- `pydub`
 ---
+
 ## Currently in development
 
 - GUI with analytics
