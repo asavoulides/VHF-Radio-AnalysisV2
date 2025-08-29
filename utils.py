@@ -78,7 +78,6 @@ def get_system(filename):
         return parts[0]
     return ""
 
-
 def get_department(filename):
     parts = _split_parts(filename)
     if len(parts) >= 2:
@@ -90,6 +89,27 @@ def get_channel(filename):
     parts = _split_parts(filename)
     if len(parts) >= 3:
         return parts[2]
+    return ""
+
+
+def get_modulation(filename):
+    parts = _split_parts(filename)
+    if len(parts) >= 4:
+        return parts[3]
+    return ""
+
+
+def get_frequency(filename):
+    parts = _split_parts(filename)
+    if len(parts) >= 5:
+        return parts[4]
+    return ""
+
+
+def get_tgid(filename):
+    parts = _split_parts(filename)
+    if len(parts) >= 6:
+        return parts[5]
     return ""
 
 

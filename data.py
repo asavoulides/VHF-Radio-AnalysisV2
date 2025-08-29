@@ -6,8 +6,8 @@ import utils
 
 class AudioMetadata:
     def __init__(self):
-        #self.directory = "Logs"
-        self.directory= "C:\\Users\\alexa\\OneDrive\\Desktop\\Folders\\Scripts\\Python\\Local Police Scanner Analysis\\Logs"
+        # self.directory = "Logs"
+        self.directory = "C:\\Users\\alexa\\OneDrive\\Desktop\\Folders\\Scripts\\Python\\Local Police Scanner Analysis\\Logs"
         os.makedirs(self.directory, exist_ok=True)
         date_str = utils.getFilename()
         self.filepath = os.path.join(self.directory, f"{date_str}.json")
@@ -15,8 +15,18 @@ class AudioMetadata:
 
     def _load(self):
         if os.path.exists(self.filepath):
-            with open(self.filepath, "r") as f:
-                return json.load(f)
+            try:
+                with open(self.filepath, "r") as f:
+                    content = f.read().strip()
+                    if content:  # Check if file has content
+                        return json.loads(content)
+                    else:
+                        return {}  # Return empty dict for empty files
+            except (json.JSONDecodeError, FileNotFoundError):
+                print(
+                    f"⚠️  Warning: Could not load {self.filepath}, starting with empty data"
+                )
+                return {}
         return {}
 
     def _save(self):
@@ -24,7 +34,17 @@ class AudioMetadata:
             json.dump(self.data, f, indent=4)
 
     def add_metadata(
-        self, filename, time_string, transcript, system, department, channel, filepath
+        self,
+        filename,
+        time_string,
+        transcript,
+        system,
+        department,
+        channel,
+        modulation,
+        frequency,
+        tgid,
+        filepath,
     ):
         self.data[filename] = {
             "Time": time_string,
@@ -32,6 +52,9 @@ class AudioMetadata:
             "System": system,
             "Department": department,
             "Channel": channel,
+            "Modulation": modulation,
+            "Frequency": frequency,
+            "TGID": tgid,
             "Filepath": filepath,
         }
         self._save()

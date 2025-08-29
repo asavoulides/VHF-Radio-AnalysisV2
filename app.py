@@ -1,3 +1,5 @@
+localTranscript = True
+
 import os
 import time
 import threading
@@ -5,12 +7,37 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from data import AudioMetadata
 import api
+from datetime import datetime, timedelta
 import utils
+import localTranscription
 
 base_dir = "C:/Proscan/Recordings"
 Data = AudioMetadata()
 seen_files = set()
 seen_lock = threading.Lock()
+Data = None
+
+
+def midnight_updater():
+    global Data, seen_files
+
+    while True:
+        # Get current time
+        now = datetime.now()
+        # Calculate next midnight
+        next_midnight = datetime.combine(now.date(), datetime.min.time()) + timedelta(
+            days=1
+        )
+        # Sleep until exactly midnight
+        sleep_seconds = (next_midnight - now).total_seconds()
+        print(f"⏳ Sleeping until midnight update in {int(sleep_seconds)} seconds...")
+        time.sleep(sleep_seconds)
+
+        # It's now 00:00:00 — perform the update
+        print("🕛 It's midnight! Updating metadata and clearing seen files.")
+        Data = AudioMetadata()  # Reload metadata for new day
+        with seen_lock:
+            seen_files.clear()
 
 
 def GetPathForRecordingsToday():
@@ -49,6 +76,9 @@ def process_file(filepath):
     system = utils.get_system(filename)
     department = utils.get_department(filename)
     channel = utils.get_channel(filename)
+    modulation = utils.get_modulation(filename)
+    frequency = utils.get_frequency(filename)
+    tgid = utils.get_tgid(filename)
 
     return {
         "filename": filename,
@@ -57,8 +87,12 @@ def process_file(filepath):
         "system": system,
         "department": department,
         "channel": channel,
+        "modulation": modulation,
+        "frequency": frequency,
+        "tgid": tgid,
         "filepath": filepath,
     }
+
 
 
 def wait_and_process(filepath):
@@ -75,6 +109,9 @@ def wait_and_process(filepath):
             result["system"],
             result["department"],
             result["channel"],
+            result["modulation"],
+            result["frequency"],
+            result["tgid"],
             result["filepath"],
         )
 
@@ -107,6 +144,9 @@ def startup():
             item["system"],
             item["department"],
             item["channel"],
+            item["modulation"],
+            item["frequency"],
+            item["tgid"],
             item["filepath"],
         )
 
@@ -135,6 +175,10 @@ def monitor_new_files():
 
 
 def main():
+    global Data
+    Data = AudioMetadata()
+
+    threading.Thread(target=midnight_updater, daemon=True).start()
     startup()
     monitor_new_files()
 

@@ -2,3 +2,8 @@ deepgram-sdk
 openai
 python-dotenv
 pydub
+faster-whisper
+torch
+torchaudio
+tqdm>=4.65.0
+whisperx

@@ -2,7 +2,8 @@ import os
 from dotenv import load_dotenv
 from deepgram import DeepgramClient, PrerecordedOptions, FileSource
 from openai import OpenAI
-from utils import getPrompt, prependTime
+from utils import getPrompt
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -11,8 +12,6 @@ DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 
 
 def getTranscript(audioPath):
-    #prependTime(audioPath) # modification to possibly improve transcriptions
-
     try:
         # Create Deepgram client using the API key
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
@@ -27,13 +26,14 @@ def getTranscript(audioPath):
         options = PrerecordedOptions(
             model="nova-3",
             smart_format=True,
+            keyterm=["491", "492", "493", "494", "495", "496","497", "498", "499","500","501","502","503","504","control"]
         )
 
         response = deepgram.listen.rest.v("1").transcribe_file(payload, options)
 
         # Extract just the transcript text
         transcript = response["results"]["channels"][0]["alternatives"][0]["transcript"]
-        
+
         return transcript
 
     except Exception as e:
@@ -43,23 +43,15 @@ def getTranscript(audioPath):
 def LLM_REQ(text):
     client = OpenAI()
 
-    response = client.responses.create(
+    response = client.chat.completions.create(
         model="gpt-4o",
-        input=[
-            {
-            "role": "system",
-            "content": [{"type": "input_text", "text": getPrompt("system")}],
-            },
-
-            {"role": "user", 
-             "content": [{"type": "input_text", "text": text}]},
+        messages=[
+            {"role": "system", "content": getPrompt("system")},
+            {"role": "user", "content": text},
         ],
-        text={"format": {"type": "text"}},
-        reasoning={},
-        tools=[],
         temperature=1,
-        max_output_tokens=2048,
+        max_tokens=2048,
         top_p=1,
-        store=True,
     )
-    return response.output[0].content[0].text
+
+    return response.choices[0].message.content
