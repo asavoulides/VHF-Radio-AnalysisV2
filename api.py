@@ -26,7 +26,7 @@ def getTranscript(audioPath):
         options = PrerecordedOptions(
             model="nova-3",
             smart_format=True,
-            keyterm=["491", "492", "493", "494", "495", "496","497", "498", "499","500","501","502","503","504","control"]
+            keyterm=["491", "492", "493", "494", "495", "496", "497", "498", "499", "500", "501", "502", "503", "504", "control"],
         )
 
         response = deepgram.listen.rest.v("1").transcribe_file(payload, options)

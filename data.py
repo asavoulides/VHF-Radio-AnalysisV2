@@ -46,6 +46,11 @@ class AudioMetadata:
         tgid,
         filepath,
     ):
+        # Check if transcript is empty, None, or just whitespace
+        if not transcript or (isinstance(transcript, str) and not transcript.strip()):
+            print(f"⚠️  Skipping {filename} - empty transcript, not adding to JSON")
+            return
+
         self.data[filename] = {
             "Time": time_string,
             "Transcript": transcript,

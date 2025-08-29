@@ -73,6 +73,12 @@ def process_file(filepath):
     print(f"[Thread] Transcribing {filename}")
     created_time = datetime.fromtimestamp(GetTimeCreated(filepath)).strftime("%H:%M:%S")
     transcript = api.getTranscript(filepath)
+
+    # Check if transcript is empty, None, or just whitespace
+    if not transcript or (isinstance(transcript, str) and not transcript.strip()):
+        print(f"[Thread] Skipping {filename} - empty transcript")
+        return None
+
     system = utils.get_system(filename)
     department = utils.get_department(filename)
     channel = utils.get_channel(filename)
@@ -94,7 +100,6 @@ def process_file(filepath):
     }
 
 
-
 def wait_and_process(filepath):
     print(f"[Watcher] Waiting for {filepath} to finish...")
     utils.wait_until_file_complete(filepath)
@@ -114,6 +119,8 @@ def wait_and_process(filepath):
             result["tgid"],
             result["filepath"],
         )
+    else:
+        print(f"[Watcher] No data to save for {filepath} - skipping JSON entry")
 
 
 def startup():
@@ -137,18 +144,22 @@ def startup():
                 results.append(result)
 
     for item in sorted(results, key=lambda x: x["time"]):
-        Data.add_metadata(
-            item["filename"],
-            item["time"],
-            item["transcript"],
-            item["system"],
-            item["department"],
-            item["channel"],
-            item["modulation"],
-            item["frequency"],
-            item["tgid"],
-            item["filepath"],
-        )
+        # Double-check transcript is not empty before adding to metadata
+        if item["transcript"] and item["transcript"].strip():
+            Data.add_metadata(
+                item["filename"],
+                item["time"],
+                item["transcript"],
+                item["system"],
+                item["department"],
+                item["channel"],
+                item["modulation"],
+                item["frequency"],
+                item["tgid"],
+                item["filepath"],
+            )
+        else:
+            print(f"[Startup] Skipping {item['filename']} - empty transcript")
 
     with seen_lock:
         seen_files.update(files)
