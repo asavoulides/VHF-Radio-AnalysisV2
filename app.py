@@ -72,10 +72,26 @@ def process_file(filepath):
 
     print(f"[Thread] Transcribing {filename}")
     created_time = datetime.fromtimestamp(GetTimeCreated(filepath)).strftime("%H:%M:%S")
-    transcript = api.getTranscript(filepath)
+    transcription_result = api.getTranscript(filepath)
 
-    # Check if transcript is empty, None, or just whitespace
-    if not transcript or (isinstance(transcript, str) and not transcript.strip()):
+    # Check if transcription failed
+    if not transcription_result:
+        print(f"[Thread] Skipping {filename} - transcription failed")
+        return None
+
+    # Extract transcript, confidence, and incident type from the result
+    if isinstance(transcription_result, dict):
+        transcript = transcription_result.get("transcript", "")
+        confidence = transcription_result.get("confidence", 0.0)
+        incident_type = transcription_result.get("incident_type", "unknown")
+    else:
+        # Backward compatibility if api returns just a string
+        transcript = transcription_result
+        confidence = 0.0
+        incident_type = "unknown"
+
+    # Check if transcript is empty or just whitespace
+    if not transcript or not transcript.strip():
         print(f"[Thread] Skipping {filename} - empty transcript")
         return None
 
@@ -90,6 +106,8 @@ def process_file(filepath):
         "filename": filename,
         "time": created_time,
         "transcript": transcript,
+        "confidence": confidence,
+        "incident_type": incident_type,
         "system": system,
         "department": department,
         "channel": channel,
@@ -118,6 +136,8 @@ def wait_and_process(filepath):
             result["frequency"],
             result["tgid"],
             result["filepath"],
+            result.get("confidence", 0.0),
+            result.get("incident_type", "unknown"),
         )
     else:
         print(f"[Watcher] No data to save for {filepath} - skipping JSON entry")
@@ -157,6 +177,8 @@ def startup():
                 item["frequency"],
                 item["tgid"],
                 item["filepath"],
+                item.get("confidence", 0.0),
+                item.get("incident_type", "unknown"),
             )
         else:
             print(f"[Startup] Skipping {item['filename']} - empty transcript")

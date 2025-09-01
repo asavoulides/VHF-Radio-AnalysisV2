@@ -45,6 +45,8 @@ class AudioMetadata:
         frequency,
         tgid,
         filepath,
+        confidence=0.0,
+        incident_type="unknown",
     ):
         # Check if transcript is empty, None, or just whitespace
         if not transcript or (isinstance(transcript, str) and not transcript.strip()):
@@ -54,6 +56,8 @@ class AudioMetadata:
         self.data[filename] = {
             "Time": time_string,
             "Transcript": transcript,
+            "Confidence": confidence,
+            "Incident_Type": incident_type,
             "System": system,
             "Department": department,
             "Channel": channel,
