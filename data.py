@@ -47,6 +47,7 @@ class AudioMetadata:
         filepath,
         confidence=0.0,
         incident_type="unknown",
+        address=None,
     ):
         # Check if transcript is empty, None, or just whitespace
         if not transcript or (isinstance(transcript, str) and not transcript.strip()):
@@ -58,6 +59,7 @@ class AudioMetadata:
             "Transcript": transcript,
             "Confidence": confidence,
             "Incident_Type": incident_type,
+            "Address": address,
             "System": system,
             "Department": department,
             "Channel": channel,

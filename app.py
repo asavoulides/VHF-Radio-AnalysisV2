@@ -79,16 +79,18 @@ def process_file(filepath):
         print(f"[Thread] Skipping {filename} - transcription failed")
         return None
 
-    # Extract transcript, confidence, and incident type from the result
+    # Extract transcript, confidence, incident type, and address from the result
     if isinstance(transcription_result, dict):
         transcript = transcription_result.get("transcript", "")
         confidence = transcription_result.get("confidence", 0.0)
         incident_type = transcription_result.get("incident_type", "unknown")
+        address = transcription_result.get("address", None)
     else:
         # Backward compatibility if api returns just a string
         transcript = transcription_result
         confidence = 0.0
         incident_type = "unknown"
+        address = None
 
     # Check if transcript is empty or just whitespace
     if not transcript or not transcript.strip():
@@ -108,6 +110,7 @@ def process_file(filepath):
         "transcript": transcript,
         "confidence": confidence,
         "incident_type": incident_type,
+        "address": address,
         "system": system,
         "department": department,
         "channel": channel,
@@ -138,6 +141,7 @@ def wait_and_process(filepath):
             result["filepath"],
             result.get("confidence", 0.0),
             result.get("incident_type", "unknown"),
+            result.get("address", None),
         )
     else:
         print(f"[Watcher] No data to save for {filepath} - skipping JSON entry")
@@ -179,6 +183,7 @@ def startup():
                 item["filepath"],
                 item.get("confidence", 0.0),
                 item.get("incident_type", "unknown"),
+                item.get("address", None),
             )
         else:
             print(f"[Startup] Skipping {item['filename']} - empty transcript")
