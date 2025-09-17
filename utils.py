@@ -2,6 +2,8 @@ import os
 from datetime import datetime
 import time
 from pydub import AudioSegment
+from dotenv import load_dotenv
+
 
 
 def get_most_recent_file(root_dir: str, extension: str = ".mp3") -> str | None:
@@ -122,3 +124,6 @@ def prependTime(path):
 
 def getPrompt(text):
     pass
+
+    
+

@@ -9,7 +9,6 @@ from data import AudioMetadata
 import api
 from datetime import datetime, timedelta
 import utils
-import localTranscription
 
 base_dir = "C:/Proscan/Recordings"
 Data = AudioMetadata()
