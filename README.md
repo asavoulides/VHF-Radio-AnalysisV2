@@ -129,3 +129,9 @@ alexandersavoulides@gmail.com
 ## License
 
 This project is licensed under the MIT License.
+
+---
+
+## Project Architecture
+
+For a full, in-depth description of every file, data flow, and what is essential vs. redundant, see `ARCHITECTURE.md` in the project root.

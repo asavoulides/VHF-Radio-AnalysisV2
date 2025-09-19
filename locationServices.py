@@ -1,32 +1,31 @@
-import googlemaps
-from datetime import datetime
+import os, googlemaps
 from dotenv import load_dotenv
-import os
+from urllib.parse import quote_plus
 
-# Load API key from .env file
 load_dotenv()
-Google_API_KEY = os.getenv("Google_API_KEY")
+gmaps = googlemaps.Client(key=os.getenv("Google_API_KEY"))
 
-# Initialize client
-gmaps = googlemaps.Client(key=Google_API_KEY)
 
-# Geocode an address
-address = "Newton, MA"
-geocode_result = gmaps.geocode(address)
+def geocode_newton(address: str):
+    q = f"{address}, Newton, MA"
+    res = gmaps.geocode(q, components={"administrative_area": "MA", "country": "US"})
+    if not res:
+        return None
+    r = res[0]
+    loc = r["geometry"]["location"]
+    fa, pid = r["formatted_address"], r.get("place_id")
+    url = (
+        f"https://www.google.com/maps/search/?api=1&query={quote_plus(fa)}&query_place_id={pid}"
+        if pid
+        else None
+    )
+    return loc["lat"], loc["lng"], fa, url
 
-if geocode_result:
-    result = geocode_result[0]  # Take the first match
 
-    # Extract formatted address
-    formatted_address = result.get("formatted_address")
+if __name__ == "__main__":
+    lat, lng, fa, url = geocode_newton("192 evelyn rd ")
+    print(lat, lng)
+    print(fa)
+    print(url)
 
-    # Extract place_id
-    place_id = result.get("place_id")
 
-    # Build Google Maps URL
-    maps_url = f"https://www.google.com/maps/place/?q=place_id:{place_id}"
-
-    print("Full Address:", formatted_address)
-    print("Google Maps URL:", maps_url)
-else:
-    print("No results found.")

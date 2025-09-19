@@ -1,5 +1,3 @@
-localTranscript = True
-
 import os
 import time
 import threading
@@ -9,6 +7,9 @@ from data import AudioMetadata
 import api
 from datetime import datetime, timedelta
 import utils
+import locationServices
+import incident_helper
+
 
 base_dir = "C:/Proscan/Recordings"
 Data = AudioMetadata()
@@ -82,7 +83,7 @@ def process_file(filepath):
     if isinstance(transcription_result, dict):
         transcript = transcription_result.get("transcript", "")
         confidence = transcription_result.get("confidence", 0.0)
-        incident_type = transcription_result.get("incident_type", "unknown")
+        incident_type = incident_helper.classify_incident(transcript)
         address = transcription_result.get("address", None)
     else:
         # Backward compatibility if api returns just a string
@@ -103,6 +104,28 @@ def process_file(filepath):
     frequency = utils.get_frequency(filename)
     tgid = utils.get_tgid(filename)
 
+    # Auto-geocode address if available
+    latitude = None
+    longitude = None
+    formatted_address = None
+    maps_link = None
+
+    if address and address.strip():
+        try:
+            print(f"[Geocoding] Looking up coordinates for: {address}")
+            result = locationServices.geocode_newton(address)
+            if result:
+                lat, lng, formatted_addr, url = result
+                latitude = lat
+                longitude = lng
+                formatted_address = formatted_addr or address
+                maps_link = url
+                print(f"[Geocoding] ✓ Found coordinates: ({lat:.4f}, {lng:.4f})")
+            else:
+                print(f"[Geocoding] ✗ No coordinates found for: {address}")
+        except Exception as e:
+            print(f"[Geocoding] Error geocoding {address}: {e}")
+
     return {
         "filename": filename,
         "time": created_time,
@@ -110,6 +133,10 @@ def process_file(filepath):
         "confidence": confidence,
         "incident_type": incident_type,
         "address": address,
+        "latitude": latitude,
+        "longitude": longitude,
+        "formatted_address": formatted_address,
+        "maps_link": maps_link,
         "system": system,
         "department": department,
         "channel": channel,
@@ -141,6 +168,10 @@ def wait_and_process(filepath):
             result.get("confidence", 0.0),
             result.get("incident_type", "unknown"),
             result.get("address", None),
+            result.get("latitude", None),
+            result.get("longitude", None),
+            result.get("formatted_address", None),
+            result.get("maps_link", None),
         )
     else:
         print(f"[Watcher] No data to save for {filepath} - skipping JSON entry")
@@ -183,6 +214,10 @@ def startup():
                 item.get("confidence", 0.0),
                 item.get("incident_type", "unknown"),
                 item.get("address", None),
+                item.get("latitude", None),
+                item.get("longitude", None),
+                item.get("formatted_address", None),
+                item.get("maps_link", None),
             )
         else:
             print(f"[Startup] Skipping {item['filename']} - empty transcript")

@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Police Scanner Command Center - Live Intelligence Dashboard</title>
+
+    <!-- External Libraries -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        /* Professional Monochrome Color Palette */
+        --primary-navy: #1e293b;
+        --primary-dark: #0f172a;
+        --accent-blue: #3b82f6;
+        --accent-red: #dc2626;
+        --accent-green: #16a34a;
+        --accent-amber: #d97706;
+
+        /* Neutrals */
+        --dark-950: #020617;
+        --dark-900: #0f172a;
+        --dark-800: #1e293b;
+        --dark-700: #334155;
+        --dark-600: #475569;
+        --dark-500: #64748b;
+        --light-400: #94a3b8;
+        --light-300: #cbd5e1;
+        --light-200: #e2e8f0;
+        --light-100: #f1f5f9;
+        --white: #ffffff;
+
+        /* Glass Effects */
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+
+        /* Professional Single Colors (No Gradients) */
+        --primary-solid: var(--primary-navy);
+        --emergency-solid: var(--accent-red);
+        --success-solid: var(--accent-green);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--dark-900);
+        color: var(--white);
+        line-height: 1.6;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* Header */
+      .main-header {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--glass-border);
+        padding: 1.5rem 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: var(--glass-shadow);
+      }
+
+      .header-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--white);
+        margin: 0;
+      }
+
+      .live-badge {
+        background: var(--emergency-solid);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .connection-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+      }
+
+      .connection-status.connected {
+        color: var(--accent-green);
+      }
+
+      .connection-status.disconnected {
+        color: var(--accent-red);
+      }
+
+      /* Main Layout */
+      .main-container {
+        padding: 2rem 0;
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 2fr 3fr;
+        gap: 2rem;
+        height: calc(100vh - 200px);
+      }
+
+      /* Left Panel - Incident Feed */
+      .incident-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        overflow-y: auto;
+      }
+
+      /* Right Panel - Map (Fixed Position) */
+      .map-panel {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--glass-shadow);
+        position: sticky;
+        top: 2rem;
+        height: calc(100vh - 250px);
+      }
+
+      .stats-overview {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      .stat-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: var(--glass-shadow);
+        transition: all 0.3s ease;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent-cyan);
+      }
+
+      .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--accent-blue);
+        margin-bottom: 0.5rem;
+      }
+
+      .stat-label {
+        color: var(--light-400);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .incident-feed {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        padding: 1.5rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--glass-shadow);
+      }
+
+      .feed-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--glass-border);
+      }
+
+      .feed-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--white);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .feed-counter {
+        color: var(--accent-cyan);
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+
+      .feed-content {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+      }
+
+      /* Filter Panel Styles */
+      .filter-panel {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+
+      .filter-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--glass-border);
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .filter-header:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .filter-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--white);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .filter-toggle {
+        background: none;
+        border: none;
+        color: var(--light-400);
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .filter-toggle:hover {
+        color: var(--accent-blue);
+        transform: scale(1.1);
+      }
+
+      .filter-toggle.collapsed {
+        transform: rotate(-90deg);
+      }
+
+      .filter-content {
+        padding: 1.25rem;
+        transition: all 0.3s ease;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .filter-content.collapsed {
+        max-height: 0;
+        padding: 0 1.25rem;
+        overflow: hidden;
+      }
+
+      .filter-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .filter-btn {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        color: var(--white);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+      }
+
+      .filter-btn:hover {
+        border-color: var(--accent-blue);
+        background: rgba(59, 130, 246, 0.1);
+        transform: translateY(-1px);
+      }
+
+      .filter-btn.active {
+        background: var(--accent-blue);
+        border-color: var(--accent-blue);
+        color: var(--white);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      }
+
+      .filter-btn.zero-count {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .filter-btn.zero-count:hover {
+        transform: none;
+        border-color: var(--glass-border);
+        background: var(--glass-bg);
+      }
+
+      .feed-content {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+      }
+
+      .feed-content::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .feed-content::-webkit-scrollbar-track {
+        background: var(--dark-800);
+        border-radius: 3px;
+      }
+
+      .feed-content::-webkit-scrollbar-thumb {
+        background: var(--accent-cyan);
+        border-radius: 3px;
+      }
+
+      .map-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--glass-border);
+      }
+
+      .map-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--white);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .map-counter {
+        color: var(--accent-emerald);
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+
+      #incidentMap {
+        flex: 1;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      /* Incident Cards */
+      .incident-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+      }
+
+      .incident-card:hover {
+        border-color: var(--accent-cyan);
+        transform: translateX(4px);
+        box-shadow: 0 4px 20px rgba(6, 182, 212, 0.2);
+      }
+
+      .incident-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+      }
+
+      .incident-type-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      /* Comprehensive Incident Type Colors */
+      .type-assault_domestic,
+      .type-assault-domestic {
+        background: #dc2626;
+        color: white;
+      }
+
+      .type-theft_burglary,
+      .type-theft-burglary {
+        background: #7c2d12;
+        color: white;
+      }
+
+      .type-disturbance_noise,
+      .type-disturbance-noise {
+        background: #d97706;
+        color: white;
+      }
+
+      .type-weapons_shots_fired,
+      .type-weapons-shots-fired {
+        background: #991b1b;
+        color: white;
+      }
+
+      .type-traffic_stop,
+      .type-traffic-stop {
+        background: #2563eb;
+        color: white;
+      }
+
+      .type-motor_vehicle_accident,
+      .type-motor-vehicle-accident {
+        background: #dc2626;
+        color: white;
+      }
+
+      .type-medical {
+        background: #dc2626;
+        color: white;
+      }
+
+      .type-fire_alarm,
+      .type-fire-alarm {
+        background: #ea580c;
+        color: white;
+      }
+
+      .type-structure_fire,
+      .type-structure-fire {
+        background: #dc2626;
+        color: white;
+      }
+
+      .type-brush_vehicle_fire,
+      .type-brush-vehicle-fire {
+        background: #ea580c;
+        color: white;
+      }
+
+      .type-gas_electrical_hazard,
+      .type-gas-electrical-hazard {
+        background: #d97706;
+        color: white;
+      }
+
+      .type-wires_down,
+      .type-wires-down {
+        background: #ca8a04;
+        color: white;
+      }
+
+      .type-hazmat {
+        background: #7c2d12;
+        color: white;
+      }
+
+      .type-animal_complaint,
+      .type-animal-complaint {
+        background: #16a34a;
+        color: white;
+      }
+
+      .type-welfare_check,
+      .type-welfare-check {
+        background: #0891b2;
+        color: white;
+      }
+
+      .type-suspicious_activity,
+      .type-suspicious-activity {
+        background: #7c3aed;
+        color: white;
+      }
+
+      .type-missing_person,
+      .type-missing-person {
+        background: #be185d;
+        color: white;
+      }
+
+      .type-alarm_burglar_panic,
+      .type-alarm-burglar-panic {
+        background: #dc2626;
+        color: white;
+      }
+
+      .type-unknown,
+      .type-other {
+        background: var(--dark-600);
+        color: white;
+      }
+
+      /* Legacy type support */
+      .type-fire_emergency {
+        background: var(--emergency-solid);
+      }
+      .type-medical_emergency {
+        background: var(--accent-red);
+      }
+      .type-traffic_violation {
+        background: var(--accent-amber);
+      }
+      .type-police_response {
+        background: var(--accent-blue);
+      }
+      .type-public_safety {
+        background: var(--primary-navy);
+      }
+
+      .incident-time {
+        color: var(--light-400);
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+
+      .incident-transcript {
+        color: var(--white);
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 0.75rem;
+        border-radius: 8px;
+        border-left: 3px solid var(--accent-cyan);
+      }
+
+      .incident-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+
+      .meta-item {
+        background: rgba(255, 255, 255, 0.02);
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .meta-label {
+        color: var(--light-400);
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+      }
+
+      .meta-value {
+        color: var(--white);
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+
+      .incident-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        background: var(--glass-bg);
+        color: var(--white);
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+
+      .action-btn:hover {
+        border-color: var(--accent-cyan);
+        color: var(--accent-cyan);
+        transform: translateY(-1px);
+      }
+
+      .action-btn.play {
+        background: var(--success-solid);
+        border-color: var(--accent-green);
+      }
+
+      .action-btn.play:hover {
+        background: var(--accent-green);
+        border-color: var(--accent-green);
+        color: var(--white);
+      }
+
+      .confidence-meter {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .confidence-bar {
+        width: 60px;
+        height: 4px;
+        background: var(--dark-700);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+
+      .confidence-fill {
+        height: 100%;
+        background: var(--success-solid);
+        transition: width 0.3s ease;
+      }
+
+      .confidence-text {
+        color: var(--light-400);
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      /* Loading States */
+      .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
+        color: var(--light-400);
+        font-size: 1rem;
+      }
+
+      .loading i {
+        margin-right: 0.75rem;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Responsive Design */
+      @media (max-width: 1200px) {
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+          height: auto;
+        }
+
+        .map-panel {
+          height: 500px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .stats-overview {
+          grid-template-columns: 1fr;
+        }
+
+        .incident-meta {
+          grid-template-columns: 1fr;
+        }
+
+        .main-container {
+          padding: 1rem 0;
+        }
+
+        .dashboard-grid {
+          gap: 1rem;
+        }
+      }
+
+      /* Audio Player */
+      .audio-player {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1rem;
+        box-shadow: var(--glass-shadow);
+        z-index: 1000;
+        transform: translateY(100px);
+        opacity: 0;
+        transition: all 0.3s ease;
+      }
+
+      .audio-player.active {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      .audio-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .audio-info {
+        color: var(--white);
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+
+      /* Custom Leaflet Styling */
+      .leaflet-popup-content-wrapper {
+        background: var(--dark-800);
+        color: var(--white);
+        border-radius: 8px;
+        box-shadow: var(--glass-shadow);
+      }
+
+      .leaflet-popup-content {
+        margin: 1rem;
+      }
+
+      .leaflet-popup-tip {
+        background: var(--dark-800);
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Header -->
+    <header class="main-header">
+      <div class="container-fluid px-4">
+        <div class="row align-items-center">
+          <div class="col-md-6">
+            <h1 class="header-title">
+              <i class="fas fa-radio"></i>
+              Police Scanner Intelligence Center
+              <span class="live-badge ms-3">Live {{ current_date }}</span>
+            </h1>
+          </div>
+          <div class="col-md-6 text-end">
+            <div id="connectionStatus" class="connection-status connected">
+              <i class="fas fa-satellite-dish"></i>
+              Connected
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <main class="main-container">
+      <div class="container-fluid px-4">
+        <div class="dashboard-grid">
+          <!-- Left Panel - Incident Feed -->
+          <div class="incident-panel">
+            <!-- Stats Overview -->
+            <div class="stats-overview">
+              <div class="stat-card">
+                <div class="stat-value" id="totalToday">0</div>
+                <div class="stat-label">Total Today</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="recentActivity">0</div>
+                <div class="stat-label">Recent Activity</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="highPriorityPct">0%</div>
+                <div class="stat-label">High Priority</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="activeLocations">0</div>
+                <div class="stat-label">Active Locations</div>
+              </div>
+            </div>
+
+            <!-- Live Incident Feed -->
+            <div class="incident-feed">
+              <div class="feed-header">
+                <h3 class="feed-title">
+                  <i class="fas fa-broadcast-tower"></i>
+                  Live Incident Feed
+                </h3>
+                <div class="feed-counter" id="feedCounter">0 incidents</div>
+              </div>
+
+              <!-- Incident Type Filter Panel -->
+              <div class="filter-panel" id="filterPanel">
+                <div class="filter-header">
+                  <h4 class="filter-title">
+                    <i class="fas fa-filter"></i>
+                    Filter by Incident Type
+                  </h4>
+                  <button class="filter-toggle" id="filterToggle">
+                    <i class="fas fa-chevron-down"></i>
+                  </button>
+                </div>
+                <div class="filter-content" id="filterContent">
+                  <div class="filter-options" id="filterOptions">
+                    <button class="filter-btn active" data-type="all">
+                      All Incidents (<span id="totalCount">0</span>)
+                    </button>
+                    <!-- Dynamic incident type buttons will be inserted here -->
+                  </div>
+                </div>
+              </div>
+
+              <div class="feed-content" id="liveFeed">
+                <div class="loading">
+                  <i class="fas fa-spinner"></i>
+                  Loading live incidents...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Panel - Interactive Map -->
+          <div class="map-panel">
+            <div class="map-header">
+              <h3 class="map-title">
+                <i class="fas fa-map-marked-alt"></i>
+                Real-Time Incident Map
+              </h3>
+              <div class="map-counter" id="mapCounter">0 incidents plotted</div>
+            </div>
+            <div id="incidentMap"></div>
+
+            <!-- Professional Legend -->
+            <div
+              style="
+                margin-top: 12px;
+                padding: 12px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                backdrop-filter: blur(10px);
+              "
+            >
+              <div
+                style="
+                  font-size: 0.875rem;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  color: #e2e8f0;
+                "
+              >
+                📍 Incident Categories
+              </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  flex-wrap: wrap;
+                  font-size: 0.75rem;
+                "
+              >
+                <div style="display: flex; align-items: center; gap: 4px">
+                  <div
+                    style="
+                      width: 12px;
+                      height: 12px;
+                      border-radius: 50%;
+                      background: #dc2626;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">High Priority</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px">
+                  <div
+                    style="
+                      width: 12px;
+                      height: 12px;
+                      border-radius: 50%;
+                      background: #ea580c;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Fire/Emergency</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px">
+                  <div
+                    style="
+                      width: 12px;
+                      height: 12px;
+                      border-radius: 50%;
+                      background: #2563eb;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Police Response</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px">
+                  <div
+                    style="
+                      width: 12px;
+                      height: 12px;
+                      border-radius: 50%;
+                      background: #d97706;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Hazards/Traffic</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px">
+                  <div
+                    style="
+                      width: 12px;
+                      height: 12px;
+                      border-radius: 50%;
+                      background: #64748b;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Unknown</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Audio Player -->
+    <div class="audio-player" id="audioPlayer">
+      <div class="audio-controls">
+        <button class="action-btn" id="audioPlayPause">
+          <i class="fas fa-play"></i>
+        </button>
+        <div class="audio-info" id="audioInfo">
+          Select an incident to play audio
+        </div>
+        <button class="action-btn" id="audioClose">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <audio id="audioElement" preload="none"></audio>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <script>
+      // Global variables
+      let socket;
+      let incidentMap;
+      let incidentMarkers = [];
+      let mapCounter = 0;
+      let currentAudio = null;
+      let audioPlayer = null;
+      let currentFilter = "all";
+      let allIncidents = [];
+      let incidentTypeCounts = {};
+
+      // Initialize application
+      document.addEventListener("DOMContentLoaded", function () {
+        initializeSocket();
+        initializeMap();
+        initializeAudioPlayer();
+        initializeFilters();
+        loadInitialData();
+
+        // Update connection status every 30 seconds
+        setInterval(checkConnection, 30000);
+      });
+
+      // Socket.IO Connection with proper configuration
+      function initializeSocket() {
+        socket = io({
+          // Proper Socket.IO client configuration
+          timeout: 20000, // 20 second connection timeout
+          reconnection: true, // Enable auto-reconnection
+          reconnectionDelay: 1000, // Start with 1 second delay
+          reconnectionAttempts: 5, // Max 5 reconnection attempts
+          maxReconnectionAttempts: 5,
+          forceNew: false, // Reuse existing connection
+          transports: ["websocket", "polling"], // Prefer websocket, fallback to polling
+        });
+
+        socket.on("connect", function () {
+          updateConnectionStatus(true);
+          // Only show connection notification on initial connect, not reconnects
+          if (!sessionStorage.getItem("connected_once")) {
+            showNotification("🔗 Live connection established", "success");
+            sessionStorage.setItem("connected_once", "true");
+          }
+          socket.emit("ping");
+        });
+
+        socket.on("connection_confirmed", function (data) {
+          // Connection confirmed - no notification needed
+        });
+
+        socket.on("pong", function (data) {
+          // Connection active
+        });
+
+        socket.on("heartbeat", function (data) {
+          updateConnectionStatus(true);
+          // Only show notifications for significant activity
+          if (data.new_count > 3) {
+            showNotification(
+              `💓 High activity - ${data.new_count} new incidents`,
+              "info"
+            );
+          }
+        });
+
+        socket.on("live_status", function (data) {
+          // Status update received
+        });
+
+        socket.on("disconnect", function () {
+          updateConnectionStatus(false);
+          showNotification(
+            "⚠️ Connection lost - attempting to reconnect...",
+            "warning"
+          );
+        });
+
+        socket.on("initial_data", function (data) {
+          console.log("=== INITIAL DATA RECEIVED ===");
+          console.log("Received data:", data);
+
+          // Store all incidents
+          allIncidents = data.incidents || [];
+          console.log(
+            "allIncidents populated with",
+            allIncidents.length,
+            "incidents"
+          );
+
+          // Clear existing feed and map
+          const liveFeed = document.getElementById("liveFeed");
+          liveFeed.innerHTML = "";
+          processedIncidents.clear();
+          clearMapMarkers();
+
+          if (!data.incidents || data.incidents.length === 0) {
+            liveFeed.innerHTML =
+              '<div class="loading">No incidents found for today</div>';
+          } else {
+            // Sort incidents by ID (chronological order) then reverse for newest-first display
+            const sortedIncidents = data.incidents
+              .sort((a, b) => a.id - b.id)
+              .reverse();
+
+            sortedIncidents.forEach((incident, index) => {
+              try {
+                if (shouldShowIncident(incident)) {
+                  addIncidentToFeed(incident, false);
+                }
+                addIncidentToMap(incident);
+                processedIncidents.add(incident.id);
+              } catch (error) {
+                console.error(
+                  `Error processing incident ${incident.id}:`,
+                  error
+                );
+              }
+            });
+          }
+
+          updateMapCounter();
+          updateFeedCounter(getVisibleIncidentCount());
+          loadIncidentTypes(); // Refresh filter counts AFTER incidents are loaded
+          console.log("=== END INITIAL DATA PROCESSING ===");
+        });
+
+        socket.on("new_incidents", function (data) {
+          // Sort new incidents by ID to maintain chronological order
+          const sortedNewIncidents = data.sort((a, b) => a.id - b.id);
+
+          sortedNewIncidents.forEach((incident) => {
+            // Only add if not already processed (avoid duplicates)
+            if (!processedIncidents.has(incident.id)) {
+              // Add to allIncidents array
+              allIncidents.push(incident);
+
+              if (shouldShowIncident(incident)) {
+                addIncidentToFeed(incident, true);
+              }
+              addIncidentToMap(incident);
+              processedIncidents.add(incident.id);
+            }
+          });
+
+          updateMapCounter();
+          updateFeedCounter(getVisibleIncidentCount());
+          loadIncidentTypes(); // Refresh filter counts
+
+          // Show notification for new incidents (only for multiple incidents)
+          if (data.length > 1) {
+            showNotification(`🆕 ${data.length} new incidents received!`);
+          }
+        });
+
+        socket.on("data_update", function (data) {
+          // Handle both single incident and array of incidents
+          if (Array.isArray(data)) {
+            // Array of incidents
+            data.forEach((incident) => {
+              if (!processedIncidents.has(incident.id)) {
+                addLiveIncident(incident, true);
+                addIncidentToMap(incident);
+                processedIncidents.add(incident.id);
+              }
+            });
+          } else if (data.incidents && Array.isArray(data.incidents)) {
+            // Object with incidents array
+            data.incidents.forEach((incident) => {
+              if (!processedIncidents.has(incident.id)) {
+                addLiveIncident(incident, true);
+                addIncidentToMap(incident);
+                processedIncidents.add(incident.id);
+              }
+            });
+          } else if (data.id) {
+            // Single incident object
+            if (!processedIncidents.has(data.id)) {
+              addLiveIncident(data, true);
+              addIncidentToMap(data);
+              processedIncidents.add(data.id);
+            }
+          }
+
+          updateMapCounter();
+          updateFeedCounter(document.querySelectorAll(".incident-card").length);
+        });
+
+        socket.on("forced_update", function (data) {
+          // Process the forced update like new incidents
+          if (data.incidents && data.incidents.length > 0) {
+            data.incidents.forEach((incident) => {
+              if (!processedIncidents.has(incident.id)) {
+                addLiveIncident(incident, true);
+                addIncidentToMap(incident);
+                processedIncidents.add(incident.id);
+              }
+            });
+            updateMapCounter();
+            updateFeedCounter(
+              document.querySelectorAll(".incident-card").length
+            );
+          }
+        });
+
+        socket.on("stats_update", function (stats) {
+          updateStatsDisplay(stats);
+        });
+
+        socket.on("debug_info", function (info) {
+          // Debug info received - no action needed in production
+        });
+
+        socket.on("monitoring_heartbeat", function (data) {
+          // Update connection status to show monitoring is active
+          updateConnectionStatus(true);
+        });
+
+        socket.on("error", function (error) {
+          showNotification("⚠️ Connection error: " + error.message, "error");
+        });
+
+        // REDUCED polling to prevent race conditions and server overload
+        setInterval(() => {
+          if (socket.connected) {
+            // Primary: Check for updates (legacy compatibility)
+            socket.emit("check_for_updates");
+          } else {
+            updateConnectionStatus(false);
+          }
+        }, 30000); // REDUCED: Check every 30 seconds
+
+        // REDUCED live incident polling (backup method only)
+        setInterval(() => {
+          if (socket.connected) {
+            socket.emit("request_live_incidents");
+          }
+        }, 60000); // REDUCED: Check every 60 seconds
+
+        // Connection health monitoring with REDUCED frequency
+        setInterval(() => {
+          if (socket.connected) {
+            // Send ping for connection health (less frequent)
+            socket.emit("ping");
+
+            fetch("/api/health")
+              .then((response) => response.json())
+              .then((data) => {
+                if (!data.monitoring_active) {
+                  showNotification("⚠️ Server monitoring inactive", "warning");
+                }
+              })
+              .catch((error) => {
+                // Health check failed - no action needed
+              });
+          }
+        }, 120000); // REDUCED: Health check every 2 minutes
+      }
+
+      // Initialize Leaflet Map
+      function initializeMap() {
+        // Center on Boston area
+        incidentMap = L.map("incidentMap").setView([42.3601, -71.0589], 11);
+
+        // Dark theme tile layer
+        L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+          {
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: "abcd",
+            maxZoom: 20,
+          }
+        ).addTo(incidentMap);
+      }
+
+      // Initialize Filters
+      function initializeFilters() {
+        const filterToggle = document.getElementById("filterToggle");
+        const filterContent = document.getElementById("filterContent");
+
+        // Ensure filter panel starts expanded (remove collapsed class if present)
+        filterContent.classList.remove("collapsed");
+        filterToggle.classList.remove("collapsed");
+
+        filterToggle.addEventListener("click", function () {
+          filterContent.classList.toggle("collapsed");
+          filterToggle.classList.toggle("collapsed");
+        });
+
+        // NOTE: loadIncidentTypes() is called AFTER incidents are loaded in initial_data event
+        console.log("Filter system initialized, waiting for incident data...");
+      }
+
+      // Load incident types and their counts
+      function loadIncidentTypes() {
+        console.log("=== LOADING INCIDENT TYPES ===");
+        fetch("/api/incident_types")
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Incident types API response:", data);
+            updateFilterOptions(data);
+            incidentTypeCounts = {};
+            data.incident_types.forEach((item) => {
+              incidentTypeCounts[item.type] = item.count;
+            });
+            console.log("Incident type counts updated:", incidentTypeCounts);
+          })
+          .catch((error) => {
+            console.error("Error loading incident types:", error);
+          });
+      }
+
+      // Update filter options with incident types
+      function updateFilterOptions(data) {
+        console.log("=== UPDATE FILTER OPTIONS ===");
+        console.log("Updating filter options with data:", data);
+        const filterOptions = document.getElementById("filterOptions");
+        const totalCount = document.getElementById("totalCount");
+
+        if (!filterOptions) {
+          console.error("Filter options element not found!");
+          return;
+        }
+
+        // Update total count
+        totalCount.textContent = data.total_non_unknown || 0;
+
+        // Clear existing dynamic buttons (keep "All Incidents" button)
+        const existingButtons = filterOptions.querySelectorAll(
+          '.filter-btn:not([data-type="all"])'
+        );
+        console.log("Removing existing buttons:", existingButtons.length);
+        existingButtons.forEach((btn) => btn.remove());
+
+        console.log(
+          `Adding ${data.incident_types.length} incident type buttons`
+        );
+
+        // Add incident type buttons
+        data.incident_types.forEach((item) => {
+          const button = document.createElement("button");
+          button.className = `filter-btn ${
+            item.count === 0 ? "zero-count" : ""
+          }`;
+          button.dataset.type = item.type;
+          button.innerHTML = `${item.formatted} (${item.count})`;
+
+          if (item.count > 0) {
+            console.log(`Adding click handler for: ${item.type}`);
+            button.addEventListener("click", () => {
+              console.log(`CLICK HANDLER TRIGGERED for: ${item.type}`);
+              filterByType(item.type);
+            });
+          }
+
+          filterOptions.appendChild(button);
+          console.log(`Added button for ${item.type}: ${item.count} incidents`);
+        });
+
+        // Only add "All" button event listener if it doesn't already have one
+        const allButton = filterOptions.querySelector('[data-type="all"]');
+        if (allButton && !allButton.hasAttribute("data-listener-added")) {
+          console.log('Adding click handler for "All" button (first time)');
+          allButton.addEventListener("click", () => {
+            console.log("ALL BUTTON CLICKED");
+            filterByType("all");
+          });
+          allButton.setAttribute("data-listener-added", "true");
+        } else if (allButton) {
+          console.log("All button already has listener, skipping");
+        }
+        console.log("=== END UPDATE FILTER OPTIONS ===");
+      }
+
+      // Filter incidents by type
+      function filterByType(type) {
+        console.log("=== FILTER DEBUG ===");
+        console.log("Filter button clicked, type:", type);
+        console.log("Current allIncidents length:", allIncidents.length);
+        console.log("Current filter:", currentFilter);
+
+        currentFilter = type;
+
+        // Update active button
+        document.querySelectorAll(".filter-btn").forEach((btn) => {
+          btn.classList.remove("active");
+        });
+
+        const targetButton = document.querySelector(`[data-type="${type}"]`);
+        console.log("Target button found:", !!targetButton);
+        if (targetButton) {
+          targetButton.classList.add("active");
+        }
+
+        if (type === "all") {
+          console.log("Showing all incidents, count:", allIncidents.length);
+          // Show all incidents
+          displayFilteredIncidents(allIncidents);
+        } else {
+          // Filter and show specific type
+          const filtered = allIncidents.filter(
+            (incident) => incident.incident_type === type
+          );
+          console.log(
+            "Filtered incidents for type",
+            type,
+            ":",
+            filtered.length
+          );
+          console.log("Sample filtered incidents:", filtered.slice(0, 3));
+          displayFilteredIncidents(filtered);
+        }
+
+        updateFeedCounter(getVisibleIncidentCount());
+        console.log("=== END FILTER DEBUG ===");
+      }
+
+      // Display filtered incidents
+      function displayFilteredIncidents(incidents) {
+        console.log("=== DISPLAY FILTERED INCIDENTS ===");
+        console.log("Incidents to display:", incidents.length);
+
+        const liveFeed = document.getElementById("liveFeed");
+        liveFeed.innerHTML = "";
+
+        if (incidents.length === 0) {
+          console.log("No incidents to show, displaying empty message");
+          liveFeed.innerHTML = `
+            <div class="loading">
+              No incidents found for the selected filter
+            </div>
+          `;
+          return;
+        }
+
+        // Sort incidents by ID (newest first)
+        const sortedIncidents = incidents.sort((a, b) => b.id - a.id);
+        console.log(
+          "Sorted incidents, first few IDs:",
+          sortedIncidents.slice(0, 5).map((i) => i.id)
+        );
+
+        sortedIncidents.forEach((incident) => {
+          console.log(
+            "Adding incident to feed:",
+            incident.id,
+            incident.incident_type
+          );
+          addIncidentToFeed(incident, false);
+        });
+
+        console.log("=== END DISPLAY FILTERED INCIDENTS ===");
+      }
+
+      // Get count of currently visible incidents
+      function getVisibleIncidentCount() {
+        return document.querySelectorAll(".incident-card").length;
+      }
+
+      // Initialize Audio Player
+      function initializeAudioPlayer() {
+        audioPlayer = document.getElementById("audioPlayer");
+        const audioElement = document.getElementById("audioElement");
+        const playPauseBtn = document.getElementById("audioPlayPause");
+        const closeBtn = document.getElementById("audioClose");
+
+        playPauseBtn.addEventListener("click", function () {
+          if (audioElement.paused) {
+            audioElement.play();
+            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+          } else {
+            audioElement.pause();
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+          }
+        });
+
+        closeBtn.addEventListener("click", function () {
+          audioElement.pause();
+          audioPlayer.classList.remove("active");
+          currentAudio = null;
+        });
+
+        audioElement.addEventListener("ended", function () {
+          playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+        });
+      }
+
+      // Load Initial Data (WebSocket only - no API calls)
+      function loadInitialData() {
+        loadStats(); // Only load stats via API (lightweight)
+      }
+
+      // Load Statistics
+      function loadStats() {
+        fetch("/api/stats")
+          .then((response) => response.json())
+          .then((data) => {
+            updateStatsDisplay(data);
+          })
+          .catch((error) => {
+            // Error loading stats - no action needed
+          });
+      }
+
+      // Update stats display from data
+      function updateStatsDisplay(data) {
+        document.getElementById("totalToday").textContent =
+          data.total_today || 0;
+        document.getElementById("recentActivity").textContent =
+          data.recent_activity || 0;
+        document.getElementById("highPriorityPct").textContent =
+          data.high_priority_percentage + "%" || "0%";
+        document.getElementById("activeLocations").textContent =
+          data.unique_locations || 0;
+      }
+
+      // Show notification to user
+      function showNotification(message, type = "info") {
+        // Create notification element
+        const notification = document.createElement("div");
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+          <div class="notification-content">
+            <span>${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" style="float: right; background: none; border: none; color: white; cursor: pointer;">&times;</button>
+          </div>
+        `;
+
+        // Add styles if not already added
+        if (!document.getElementById("notification-styles")) {
+          const styles = document.createElement("style");
+          styles.id = "notification-styles";
+          styles.innerHTML = `
+            .notification {
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              padding: 12px 20px;
+              border-radius: 8px;
+              color: white;
+              z-index: 10000;
+              animation: slideIn 0.3s ease-out;
+              max-width: 350px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+              font-size: 0.875rem;
+              transition: all 0.3s ease;
+            }
+            .notification-info { background: #3b82f6; }
+            .notification-error { background: #ef4444; }
+            .notification-success { background: #10b981; }
+            .notification-warning { background: #f59e0b; }
+            @keyframes slideIn {
+              from { transform: translateX(100%); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+          `;
+          document.head.appendChild(styles);
+        }
+
+        document.body.appendChild(notification);
+
+        // Auto-remove after 3 seconds (reduced from 5)
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.style.opacity = "0";
+            notification.style.transform = "translateX(100%)";
+            setTimeout(() => notification.remove(), 300);
+          }
+        }, 3000);
+      }
+
+      // ===== REMOVED: loadIncidentFeed() and loadIncidentMap() =====
+      // These functions have been removed for efficiency
+      // All incident data now comes through WebSocket initial_data and new_incidents events
+      // This eliminates redundant API calls and improves performance
+
+      // Track processed incidents to avoid duplicates
+      let processedIncidents = new Set();
+
+      // Check if incident should be shown based on current filter
+      function shouldShowIncident(incident) {
+        if (currentFilter === "all") {
+          return true;
+        }
+        return incident.incident_type === currentFilter;
+      }
+
+      // Add incident to feed (renamed from addLiveIncident)
+      function addIncidentToFeed(incident, isNew = false) {
+        // Check for duplicates
+        if (processedIncidents.has(incident.id)) {
+          return;
+        }
+
+        const liveFeed = document.getElementById("liveFeed");
+
+        // Clear loading message if it exists
+        if (liveFeed.querySelector(".loading")) {
+          liveFeed.innerHTML = "";
+        }
+
+        const incidentEl = document.createElement("div");
+        incidentEl.className = "incident-card";
+        incidentEl.dataset.incidentId = incident.id;
+
+        // Get incident type class
+        const typeClass = getIncidentTypeClass(incident.incident_type);
+
+        // Calculate confidence percentage
+        const confidencePercent = Math.round((incident.confidence || 0) * 100);
+
+        incidentEl.innerHTML = `
+          <div class="incident-header">
+            <span class="incident-type-badge ${typeClass}">
+              ${formatIncidentType(incident.incident_type)}
+            </span>
+            <span class="incident-time">${incident.time_recorded}</span>
+          </div>
+
+          <div class="incident-transcript">
+            "${incident.transcript}"
+          </div>
+
+          <div class="incident-meta">
+            <div class="meta-item">
+              <div class="meta-label">System</div>
+              <div class="meta-value">${incident.system || "Unknown"}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Department</div>
+              <div class="meta-value">${incident.department || "Unknown"}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Channel</div>
+              <div class="meta-value">${incident.channel || "Unknown"}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Frequency</div>
+              <div class="meta-value">${incident.frequency || "Unknown"}</div>
+            </div>
+            ${
+              incident.formatted_address
+                ? `
+            <div class="meta-item">
+              <div class="meta-label">Location</div>
+              <div class="meta-value">${incident.formatted_address}</div>
+            </div>
+            `
+                : ""
+            }
+            <div class="meta-item">
+              <div class="meta-label">Confidence</div>
+              <div class="meta-value">
+                <div class="confidence-meter">
+                  <div class="confidence-bar">
+                    <div class="confidence-fill" style="width: ${confidencePercent}%"></div>
+                  </div>
+                  <span class="confidence-text">${confidencePercent}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="incident-actions">
+            <!-- ALWAYS show audio button for every incident -->
+            <button class="action-btn play" onclick="playAudio('${
+              incident.audio_filename
+            }', '${incident.system} - ${incident.department}')"
+                    ${
+                      incident.audio_status === "missing"
+                        ? 'title="Audio may not be available" style="opacity: 0.7;"'
+                        : ""
+                    }>
+              <i class="fas fa-play"></i>
+              ${
+                incident.audio_status === "missing" ? "Audio (?)" : "Play Audio"
+              }
+            </button>
+            
+            <!-- ONLY show "Show on Map" button for incidents with actual locations -->
+            ${
+              incident.formatted_address &&
+              incident.formatted_address !== "Unknown" &&
+              incident.formatted_address !== ""
+                ? `
+              <button class="action-btn" onclick="showOnMap(${incident.id})" title="Highlight this incident on map">
+                <i class="fas fa-map-marker-alt"></i>
+                Show on Map
+              </button>
+            `
+                : ""
+            }
+            
+            ${
+              incident.maps_link
+                ? `
+              <a href="${incident.maps_link}" target="_blank" class="action-btn">
+                <i class="fas fa-external-link-alt"></i>
+                Google Maps
+              </a>
+            `
+                : ""
+            }
+          </div>
+        `;
+
+        // Add to top of feed with animation
+        // Smart insertion to maintain strict chronological order
+        if (isNew) {
+          // For new incidents, find the correct position to maintain ID order
+          const existingCards = Array.from(
+            liveFeed.querySelectorAll(".incident-card")
+          );
+          let insertPosition = null;
+
+          // Find the correct position (incidents are ordered newest to oldest)
+          for (let card of existingCards) {
+            const cardId = parseInt(card.dataset.incidentId);
+            if (incident.id > cardId) {
+              insertPosition = card;
+              break;
+            }
+          }
+
+          // Insert with animation
+          incidentEl.style.transform = "translateX(-100%)";
+          incidentEl.style.opacity = "0";
+
+          if (insertPosition) {
+            liveFeed.insertBefore(incidentEl, insertPosition);
+          } else {
+            liveFeed.appendChild(incidentEl); // Insert at end if it's the oldest
+          }
+
+          // Animate in
+          setTimeout(() => {
+            incidentEl.style.transform = "translateX(0)";
+            incidentEl.style.opacity = "1";
+          }, 100);
+        } else {
+          // For initial load, append in ID order (oldest to newest, then display newest first)
+          liveFeed.appendChild(incidentEl);
+        }
+      }
+
+      // Clear all map markers
+      function clearMapMarkers() {
+        incidentMarkers.forEach((marker) => incidentMap.removeLayer(marker));
+        incidentMarkers = [];
+        mapCounter = 0;
+      }
+
+      // Update Map with Incidents (with rate limiting)
+      function updateMapWithIncidents(incidents) {
+        // Clear existing markers
+        incidentMarkers.forEach((marker) => incidentMap.removeLayer(marker));
+        incidentMarkers = [];
+        mapCounter = 0;
+
+        // Filter incidents with addresses
+        const incidentsWithAddresses = incidents.filter(
+          (incident) =>
+            incident.formatted_address &&
+            incident.formatted_address !== "Unknown" &&
+            incident.formatted_address !== ""
+        );
+
+        // Process with delay to avoid rate limiting
+        let delay = 0;
+        incidentsWithAddresses.forEach((incident, index) => {
+          setTimeout(() => {
+            addIncidentToMap(incident);
+          }, delay);
+          delay += 200; // 200ms delay between geocoding requests
+        });
+
+        updateMapCounter();
+      }
+
+      // Add Incident to Map using REAL coordinates from database
+      function addIncidentToMap(incident) {
+        // PREVENT DUPLICATES: Check if marker already exists for this incident
+        const existingMarker = incidentMarkers.find(
+          (m) => m.incidentId === incident.id
+        );
+        if (existingMarker) {
+          return;
+        }
+
+        // Check if we have real coordinates from the enhanced geocoding
+        if (incident.latitude && incident.longitude) {
+          const lat = parseFloat(incident.latitude);
+          const lng = parseFloat(incident.longitude);
+
+          // Validate coordinates are reasonable
+          if (
+            !isNaN(lat) &&
+            !isNaN(lng) &&
+            lat >= 42.25 &&
+            lat <= 42.4 &&
+            lng >= -71.35 &&
+            lng <= -71.15
+          ) {
+            createIncidentMarker(incident, lat, lng);
+            return;
+          }
+        }
+
+        // Fallback to address-based geocoding if no coordinates
+        if (
+          !incident.formatted_address ||
+          incident.formatted_address === "Unknown" ||
+          incident.formatted_address === ""
+        ) {
+          return;
+        }
+
+        // Use static fallback only as last resort
+        geocodeFallback(incident);
+      }
+
+      // Static geocoding coordinates for Newton, MA areas (fallback when API unavailable)
+      const staticLocations = {
+        newton: { lat: 42.337, lng: -71.2092 },
+        "newton centre": { lat: 42.3256, lng: -71.1922 },
+        "newton center": { lat: 42.3256, lng: -71.1922 },
+        "newton highlands": { lat: 42.322, lng: -71.2061 },
+        newtonville: { lat: 42.3529, lng: -71.2061 },
+        "west newton": { lat: 42.3548, lng: -71.229 },
+        auburndale: { lat: 42.3465, lng: -71.2495 },
+        "chestnut hill": { lat: 42.3251, lng: -71.1656 },
+        "newton upper falls": { lat: 42.3017, lng: -71.2528 },
+        waltham: { lat: 42.3765, lng: -71.2356 },
+        brookline: { lat: 42.3317, lng: -71.1212 },
+        "ma-9": { lat: 42.337, lng: -71.2092 }, // Route 9 through Newton
+        "route 9": { lat: 42.337, lng: -71.2092 },
+      };
+
+      // Fallback geocoding using static coordinates
+      function geocodeFallback(incident) {
+        // Extract location key from formatted address
+        let locationKey = "newton"; // Default
+        const address = incident.formatted_address.toLowerCase();
+
+        // Check for specific Newton areas
+        for (const [key, coords] of Object.entries(staticLocations)) {
+          if (address.includes(key)) {
+            locationKey = key;
+            break;
+          }
+        }
+
+        const coords = staticLocations[locationKey];
+
+        // Add small random offset to avoid overlapping markers (±0.002 degrees ≈ ±200m)
+        const lat = coords.lat + (Math.random() - 0.5) * 0.004;
+        const lng = coords.lng + (Math.random() - 0.5) * 0.004;
+
+        createIncidentMarker(incident, lat, lng);
+      }
+
+      // Professional Color System Based on Incident Type
+      function getIncidentColor(incidentType) {
+        // Comprehensive color mapping for all incident types
+        const colors = {
+          // High Priority - Red variants
+          "Assault/Domestic": "#dc2626",
+          "Weapons/Shots Fired": "#991b1b",
+          "Motor Vehicle Accident": "#dc2626",
+          Medical: "#dc2626",
+          "Structure Fire": "#dc2626",
+          "Alarm (Burglar/Panic)": "#dc2626",
+
+          // Fire/Emergency - Orange/Red variants
+          "Fire Alarm": "#ea580c",
+          "Brush/Vehicle Fire": "#ea580c",
+
+          // Hazards - Amber/Orange variants
+          "Gas/Electrical Hazard": "#d97706",
+          "Wires Down": "#ca8a04",
+          "Disturbance/Noise": "#d97706",
+
+          // Police Response - Blue variants
+          "Traffic Stop": "#2563eb",
+          "Welfare Check": "#0891b2",
+          "Suspicious Activity": "#7c3aed",
+          "Missing Person": "#be185d",
+
+          // Other/Lower Priority
+          "Theft/Burglary": "#7c2d12",
+          Hazmat: "#7c2d12",
+          "Animal Complaint": "#16a34a",
+
+          // Fallback
+          unknown: "#64748b",
+          other: "#64748b",
+        };
+
+        // Return color based on exact type match, with fallback to gray
+        return colors[incidentType] || colors["unknown"];
+      }
+
+      // Create marker with proper styling
+      function createIncidentMarker(incident, lat, lng) {
+        if (!incidentMap) {
+          return;
+        }
+
+        const typeClass = getIncidentTypeClass(incident.incident_type);
+
+        // Use professional incident-type based color system
+        const markerColor = getIncidentColor(incident.incident_type);
+
+        try {
+          const marker = L.circleMarker([lat, lng], {
+            radius: 8,
+            fillColor: markerColor,
+            color: "#ffffff",
+            weight: 2,
+            opacity: 0.9,
+            fillOpacity: 0.8,
+          }).addTo(incidentMap);
+
+          const popupContent = `
+          <div style="min-width: 280px; max-width: 320px;">
+            <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+              <span style="background: ${markerColor}; color: white; padding: 4px 12px; border-radius: 16px; font-size: 0.75rem; font-weight: 600;">
+                ${formatIncidentType(incident.incident_type)}
+              </span>
+              <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
+                ${incident.time_recorded}
+              </span>
+            </div>
+            <div style="margin-bottom: 12px; font-weight: 600; color: #1e293b;">
+              📡 ${incident.system} - ${incident.department}
+            </div>
+            <div style="margin-bottom: 12px; font-style: italic; color: #334155; background: #f1f5f9; padding: 8px; border-radius: 8px; border-left: 3px solid ${markerColor};">
+              "${incident.transcript}"
+            </div>
+            <div style="margin-bottom: 8px; font-size: 0.875rem; color: #475569;">
+              📍 ${incident.formatted_address || "Location unknown"}
+            </div>
+            <div style="margin-bottom: 12px; font-size: 0.875rem; color: #64748b;">
+              📻 ${incident.frequency} • ${incident.channel}
+            </div>
+            <!-- Audio playback and navigation -->
+            <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+              <button onclick="playAudio('${incident.audio_filename}', '${
+            incident.system
+          } - ${incident.department}')" 
+                      style="background: #059669; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.875rem; cursor: pointer; font-weight: 600;"
+                      ${
+                        incident.audio_status === "missing"
+                          ? 'title="Audio may not be available"'
+                          : ""
+                      }>
+                <i class="fas fa-play"></i> ${
+                  incident.audio_status === "missing"
+                    ? "Audio (?)"
+                    : "Play Audio"
+                }
+              </button>
+              
+              <button onclick="jumpToIncident(${incident.id})" 
+                      style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.875rem; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-comments"></i> Jump to Chat
+              </button>
+            </div>
+          </div>
+        `;
+
+          marker.bindPopup(popupContent);
+          marker.incidentId = incident.id;
+          incidentMarkers.push(marker);
+          mapCounter++;
+        } catch (error) {
+          // Error creating marker - no action needed
+        }
+      }
+
+      // Helper Functions
+      function getIncidentTypeClass(type) {
+        if (!type) return "type-other";
+        // Convert incident type to CSS class
+        return `type-${type.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+      }
+
+      function formatIncidentType(type) {
+        if (!type || type === "unknown") return "Unknown";
+        // Format incident type for display
+        return type
+          .replace(/_/g, " ")
+          .replace(/\//g, " / ")
+          .replace(/\b\w/g, (l) => l.toUpperCase());
+      }
+
+      function getMarkerColor(type) {
+        const colors = {
+          fire_emergency: "#dc2626",
+          medical_emergency: "#dc2626",
+          traffic_violation: "#d97706",
+          police_response: "#0891b2",
+          public_safety: "#7c3aed",
+          other: "#64748b",
+        };
+        return colors[type] || colors["other"];
+      }
+
+      function updateConnectionStatus(connected) {
+        const status = document.getElementById("connectionStatus");
+        if (connected) {
+          status.className = "connection-status connected";
+          status.innerHTML = '<i class="fas fa-satellite-dish"></i> Live';
+        } else {
+          status.className = "connection-status disconnected";
+          status.innerHTML =
+            '<i class="fas fa-exclamation-triangle"></i> Reconnecting...';
+        }
+      }
+
+      function updateFeedCounter(count) {
+        document.getElementById(
+          "feedCounter"
+        ).textContent = `${count} incidents`;
+      }
+
+      function updateMapCounter() {
+        document.getElementById(
+          "mapCounter"
+        ).textContent = `${mapCounter} incidents plotted`;
+      }
+
+      function checkConnection() {
+        if (socket && socket.connected) {
+          updateConnectionStatus(true);
+        } else {
+          updateConnectionStatus(false);
+        }
+      }
+
+      // Audio Functions
+      function playAudio(filename, title) {
+        if (!filename) return;
+
+        const audioElement = document.getElementById("audioElement");
+        const audioInfo = document.getElementById("audioInfo");
+        const playPauseBtn = document.getElementById("audioPlayPause");
+
+        audioElement.src = `/audio/${filename}`;
+        audioInfo.textContent = title;
+        audioPlayer.classList.add("active");
+
+        audioElement
+          .play()
+          .then(() => {
+            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            currentAudio = filename;
+          })
+          .catch((error) => {
+            console.error("❌ Audio playback failed:", error);
+            audioInfo.textContent = "Audio playback failed";
+          });
+      }
+
+      function focusOnMap(incidentId) {
+        const marker = incidentMarkers.find((m) => m.incidentId === incidentId);
+        if (marker) {
+          incidentMap.setView(marker.getLatLng(), 15);
+          marker.openPopup();
+        }
+      }
+
+      // Bidirectional Navigation Functions
+      function showOnMap(incidentId) {
+        // Find the map marker for this incident
+        const marker = incidentMarkers.find((m) => m.incidentId === incidentId);
+        if (marker) {
+          // Center map on marker and open popup
+          incidentMap.setView(marker.getLatLng(), 16);
+          marker.openPopup();
+
+          // Add temporary highlight effect
+          const originalColor = marker.options.fillColor;
+          marker.setStyle({
+            fillColor: "#ffff00", // Bright yellow highlight
+            color: "#ffff00",
+            weight: 4,
+          });
+
+          // Reset color after 2 seconds
+          setTimeout(() => {
+            marker.setStyle({
+              fillColor: originalColor,
+              color: originalColor,
+              weight: 2,
+            });
+          }, 2000);
+        }
+      }
+
+      function jumpToIncident(incidentId) {
+        // Find the incident element in the feed
+        const incidentElement = document.querySelector(
+          `[data-incident-id="${incidentId}"]`
+        );
+        if (incidentElement) {
+          // Scroll to the incident in the feed
+          incidentElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          // Add temporary highlight effect
+          const originalBackground = incidentElement.style.backgroundColor;
+          incidentElement.style.backgroundColor = "rgba(59, 130, 246, 0.15)"; // Clean blue highlight that matches the dashboard theme
+          incidentElement.style.border = "2px solid var(--accent-blue)";
+          incidentElement.style.transform = "scale(1.02)";
+          incidentElement.style.transition = "all 0.3s ease";
+          incidentElement.style.boxShadow =
+            "0 4px 20px rgba(59, 130, 246, 0.3)";
+
+          // Reset styling after 2 seconds
+          setTimeout(() => {
+            incidentElement.style.backgroundColor = originalBackground;
+            incidentElement.style.border = "";
+            incidentElement.style.transform = "scale(1)";
+            incidentElement.style.boxShadow = "";
+          }, 2000);
+        }
+      }
+
+      // Auto-refresh stats only (reduced frequency for stability)
+      setInterval(() => {
+        if (socket && socket.connected) {
+          loadStats();
+        }
+      }, 60000); // Every 60 seconds instead of 30
+    </script>
+  </body>
+</html>
