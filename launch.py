@@ -12,20 +12,14 @@ from pathlib import Path
 
 def main():
     """Launch the consolidated scanner dashboard"""
-    dashboard_file = Path("scanner_dashboard.py")
+    dashboard_file = Path("C:\\Users\\alexa\\OneDrive\\Desktop\\Folders\\Scripts\\Python\\Local Police Scanner Analysis\\scanner_dashboard.py")
 
     if not dashboard_file.exists():
         print("❌ Dashboard file not found!")
         sys.exit(1)
 
-    print("🚀 Launching Police Scanner Professional Dashboard...")
-    print("🔴 Live Command Center: http://localhost:8000/live")
-    print("🌐 (Root redirects to Live): http://localhost:8000")
-    print("🎵 Audio playback enabled")
-    print("🗺️ Interactive mapping enabled")
-    print("📊 Real-time analytics enabled")
-    print("🔧 COMPREHENSIVE WEBSOCKET FIXES APPLIED")
-    print("⏹️  Press Ctrl+C to stop")
+    print("🌐 Root: http://localhost:4000")
+    print("⏹️ Press Ctrl+C to stop")
     print()
 
     try:

@@ -64,38 +64,34 @@ def GetTimeCreated(filepath):
 
 def process_file(filepath):
     filename = os.path.basename(filepath)
-    meta = Data.get_metadata(filename)
-
+    meta = Data.get_metadata(filename, filepath)
     if "Transcript" in meta:
-        print(f"[Thread] Skipping {filename}, already transcribed.")
+        print(f"[Thread] Skipping {filename}, already processed today.")
         return None
 
     print(f"[Thread] Transcribing {filename}")
     created_time = datetime.fromtimestamp(GetTimeCreated(filepath)).strftime("%H:%M:%S")
     transcription_result = api.getTranscript(filepath)
 
-    # Check if transcription failed
+    # Handle transcription result
     if not transcription_result:
-        print(f"[Thread] Skipping {filename} - transcription failed")
-        return None
-
-    # Extract transcript, confidence, incident type, and address from the result
-    if isinstance(transcription_result, dict):
+        print(
+            f"[Thread] Transcription failed for {filename}, proceeding with empty transcript."
+        )
+        transcript = ""
+        confidence = 0.0
+        incident_type = "unknown"
+        address = None
+    elif isinstance(transcription_result, dict):
         transcript = transcription_result.get("transcript", "")
         confidence = transcription_result.get("confidence", 0.0)
         incident_type = incident_helper.classify_incident(transcript)
         address = transcription_result.get("address", None)
     else:
-        # Backward compatibility if api returns just a string
         transcript = transcription_result
         confidence = 0.0
         incident_type = "unknown"
         address = None
-
-    # Check if transcript is empty or just whitespace
-    if not transcript or not transcript.strip():
-        print(f"[Thread] Skipping {filename} - empty transcript")
-        return None
 
     system = utils.get_system(filename)
     department = utils.get_department(filename)
@@ -104,7 +100,6 @@ def process_file(filepath):
     frequency = utils.get_frequency(filename)
     tgid = utils.get_tgid(filename)
 
-    # Auto-geocode address if available
     latitude = None
     longitude = None
     formatted_address = None
@@ -173,6 +168,10 @@ def wait_and_process(filepath):
             result.get("formatted_address", None),
             result.get("maps_link", None),
         )
+        if not result["transcript"] or not result["transcript"].strip():
+            print(f"[Watcher] Added {result['filename']} with empty transcript")
+        else:
+            print(f"[Thread] Confirmed {result['filename']} marked as processed in DB.")
     else:
         print(f"[Watcher] No data to save for {filepath} - skipping JSON entry")
 
@@ -198,29 +197,28 @@ def startup():
                 results.append(result)
 
     for item in sorted(results, key=lambda x: x["time"]):
-        # Double-check transcript is not empty before adding to metadata
-        if item["transcript"] and item["transcript"].strip():
-            Data.add_metadata(
-                item["filename"],
-                item["time"],
-                item["transcript"],
-                item["system"],
-                item["department"],
-                item["channel"],
-                item["modulation"],
-                item["frequency"],
-                item["tgid"],
-                item["filepath"],
-                item.get("confidence", 0.0),
-                item.get("incident_type", "unknown"),
-                item.get("address", None),
-                item.get("latitude", None),
-                item.get("longitude", None),
-                item.get("formatted_address", None),
-                item.get("maps_link", None),
-            )
-        else:
-            print(f"[Startup] Skipping {item['filename']} - empty transcript")
+        # Always add metadata entry, even if transcript is empty
+        Data.add_metadata(
+            item["filename"],
+            item["time"],
+            item["transcript"],
+            item["system"],
+            item["department"],
+            item["channel"],
+            item["modulation"],
+            item["frequency"],
+            item["tgid"],
+            item["filepath"],
+            item.get("confidence", 0.0),
+            item.get("incident_type", "unknown"),
+            item.get("address", None),
+            item.get("latitude", None),
+            item.get("longitude", None),
+            item.get("formatted_address", None),
+            item.get("maps_link", None),
+        )
+        if not item["transcript"] or not str(item["transcript"]).strip():
+            print(f"[Startup] Added {item['filename']} with empty transcript")
 
     with seen_lock:
         seen_files.update(files)

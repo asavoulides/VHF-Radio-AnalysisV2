@@ -58,11 +58,9 @@ class PoliceScannerDashboard:
     """Simple Police Scanner Web Dashboard with Thread Safety"""
 
     def __init__(self):
-        # Use environment variable for database path
-        backup_db_path = os.getenv("DB_PATH", "Logs/audio_metadata.db").replace(
-            ".db", "_BACKUP.db"
-        )
-        self.db_path = Path(backup_db_path)
+        # Use environment variable for database path (main database, not backup)
+        db_path = os.getenv("DB_PATH", "Logs/audio_metadata.db")
+        self.db_path = Path(db_path)
         self.current_date = utils.getFilename().replace("_", "")
 
     def get_connection(self):
@@ -145,13 +143,29 @@ class PoliceScannerDashboard:
                 )
                 recent_activity = cursor.fetchone()[0]
 
-                # High priority incidents (fire/medical emergencies)
+                # High priority incidents (life-threatening and urgent public safety)
                 cursor.execute(
                     """
                     SELECT COUNT(*) as high_priority_count
                     FROM audio_metadata 
                     WHERE date_created = ? 
-                    AND (incident_type LIKE '%fire%' OR incident_type LIKE '%medical%' OR incident_type LIKE '%emergency%')
+                    AND (
+                        incident_type IN (
+                            'Medical',
+                            'Structure Fire', 
+                            'Brush/Vehicle Fire',
+                            'Fire Alarm',
+                            'Weapons/Shots Fired',
+                            'Assault/Domestic',
+                            'Motor Vehicle Accident',
+                            'Gas/Electrical Hazard',
+                            'Hazmat',
+                            'Missing Person',
+                            'Alarm (Burglar/Panic)'
+                        )
+                        OR incident_type LIKE '%emergency%'
+                        OR incident_type LIKE '%Emergency%'
+                    )
                     """,
                     (today,),
                 )
@@ -196,7 +210,7 @@ class PoliceScannerDashboard:
                 conn.close()
 
     def get_incidents(self):
-        """Get today's incidents"""
+        """Get today's incidents, excluding those with empty transcripts"""
         with db_lock:  # Thread-safe database access
             conn = self.get_connection()
             cursor = conn.cursor()
@@ -207,11 +221,11 @@ class PoliceScannerDashboard:
                     """
                     SELECT id, transcript, address, formatted_address, 
                            incident_type, system, department, channel,
-                           time_recorded, filepath, original_filename, 
+                           time_recorded, filepath, original_filename, filename,
                            date_created, latitude, longitude,
                            confidence, frequency, modulation, tgid, maps_link
                     FROM audio_metadata 
-                    WHERE date_created = ?
+                    WHERE date_created = ? AND transcript IS NOT NULL AND transcript != ''
                     ORDER BY time_recorded DESC, id DESC
                 """,
                     (today,),
@@ -314,31 +328,58 @@ def serve_audio(filename):
     """Serve audio files for playback"""
     try:
         decoded_filename = unquote(filename)
+        incident_id = request.args.get("incident_id")
 
         # Get filepath from database
         with db_lock:
             conn = dashboard.get_connection()
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT filepath FROM audio_metadata WHERE filename = ? LIMIT 1",
-                (decoded_filename,),
-            )
 
-            result = cursor.fetchone()
+            # If incident_id is provided, find the EXACT record (CRITICAL FIX)
+            if incident_id:
+                cursor.execute(
+                    "SELECT filepath FROM audio_metadata WHERE id = ? AND filepath IS NOT NULL AND LENGTH(filepath) > 0",
+                    (incident_id,),
+                )
+                result = cursor.fetchone()
+                print(f"🎵 Audio request by ID {incident_id}: {decoded_filename}")
+            else:
+                # Fallback: search by filename (but this can find wrong files!)
+                cursor.execute(
+                    "SELECT filepath FROM audio_metadata WHERE filename = ? AND filepath IS NOT NULL AND LENGTH(filepath) > 0 ORDER BY id DESC LIMIT 1",
+                    (decoded_filename,),
+                )
+                result = cursor.fetchone()
+
+                # If not found, try original_filename
+                if not result:
+                    cursor.execute(
+                        "SELECT filepath FROM audio_metadata WHERE original_filename = ? AND filepath IS NOT NULL AND LENGTH(filepath) > 0 ORDER BY id DESC LIMIT 1",
+                        (decoded_filename,),
+                    )
+                    result = cursor.fetchone()
+                print(f"🎵 Audio request by filename: {decoded_filename}")
+
             conn.close()
 
         if result and result[0]:
             filepath = Path(result[0])
+            print(f"🎵 Serving: {filepath}")
+
             if filepath.exists():
                 return send_file(
                     str(filepath), mimetype="audio/mpeg", as_attachment=False
                 )
             else:
-                return jsonify({"error": "Audio file not found"}), 404
+                print(f"❌ Audio file not found at path: {filepath}")
+                return jsonify({"error": f"Audio file not found at {filepath}"}), 404
         else:
+            print(f"❌ No database record found for audio: {decoded_filename}")
             return jsonify({"error": "Audio file not in database"}), 404
 
     except Exception as e:
+        print(f"❌ Audio serve error: {e}")
+        return jsonify({"error": "Audio serve error"}), 500
         return jsonify({"error": str(e)}), 500
 
 
@@ -413,7 +454,7 @@ def api_incidents_filtered(incident_type):
                 """
                 SELECT id, transcript, address, formatted_address, 
                        incident_type, system, department, channel,
-                       time_recorded, filepath, original_filename, 
+                       time_recorded, filepath, original_filename, filename,
                        date_created, latitude, longitude,
                        confidence, frequency, modulation, tgid, maps_link
                 FROM audio_metadata 
@@ -580,6 +621,58 @@ def api_force_update():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/debug/audio_info")
+def api_debug_audio_info():
+    """Debug endpoint to check audio file availability"""
+    try:
+        with db_lock:
+            conn = dashboard.get_connection()
+            cursor = conn.cursor()
+
+            # Get a few recent records with filepaths
+            cursor.execute(
+                """
+                SELECT filename, original_filename, filepath, id
+                FROM audio_metadata 
+                WHERE date_created = ? 
+                AND filepath IS NOT NULL 
+                AND LENGTH(filepath) > 0
+                ORDER BY id DESC
+                LIMIT 5
+                """,
+                (dashboard.current_date,),
+            )
+
+            audio_info = []
+            for row in cursor.fetchall():
+                filename, original_filename, filepath, record_id = row
+                file_exists = Path(filepath).exists() if filepath else False
+
+                audio_info.append(
+                    {
+                        "id": record_id,
+                        "filename": filename,
+                        "original_filename": original_filename,
+                        "filepath": filepath,
+                        "file_exists": file_exists,
+                        "audio_url": f"/audio/{quote(filename)}" if filename else None,
+                    }
+                )
+
+            conn.close()
+
+            return jsonify(
+                {
+                    "audio_files": audio_info,
+                    "proscan_directory_exists": Path("C:/Proscan/Recordings").exists(),
+                    "current_working_directory": str(Path.cwd()),
+                }
+            )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/debug/status")
 def api_debug_status():
     """Get detailed debug status"""
@@ -715,12 +808,14 @@ def handle_check_for_updates():
 
 @socketio.on("request_live_incidents")
 def handle_request_live_incidents():
-    """Handle request for live incidents from frontend"""
+    """Handle request for live incidents from frontend, excluding empty transcripts"""
     try:
         print(f"📡 Live incidents requested by {request.sid}")
 
-        # Send all today's incidents
-        incidents = dashboard.get_incidents()
+        # Send all today's incidents, excluding those with empty transcripts
+        incidents = [
+            incident for incident in dashboard.get_incidents() if incident["transcript"]
+        ]
         emit("initial_data", {"incidents": incidents, "count": len(incidents)})
 
     except Exception as e:
@@ -796,7 +891,7 @@ def enhanced_monitor_database():
                             """
                             SELECT id, transcript, address, formatted_address, 
                                    incident_type, system, department, channel,
-                                   time_recorded, filepath, original_filename, 
+                                   time_recorded, filepath, original_filename, filename,
                                    date_created, latitude, longitude,
                                    confidence, frequency, modulation, tgid, maps_link
                             FROM audio_metadata 
@@ -973,22 +1068,7 @@ def monitor_database_changes():
 # ===== APPLICATION STARTUP =====
 
 if __name__ == "__main__":
-    print("🚀 Police Scanner Dashboard - FIXED PROFESSIONAL EDITION")
-    print("=" * 65)
-    print(f"📅 Date: {dashboard.current_date}")
-    print("🌐 Live Dashboard: http://localhost:8000/live")
-    print("🔧 Health Check: http://localhost:8000/api/health")
-    print("📊 Latest Info: http://localhost:8000/api/latest")
-    print()
-    print("🚀 PROFESSIONAL FEATURES (FIXED):")
-    print("  • Thread-safe database connections")
-    print("  • Proper error handling in monitoring thread")
-    print("  • Professional Socket.IO configuration")
-    print("  • Database connection leak prevention")
-    print("  • Stable connection management")
-    print("  • Comprehensive websocket event handling")
-    print("⏹️  Press Ctrl+C to stop")
-    print()
+    print("🌐 Live Dashboard: http://localhost:5000/live")
 
     try:
         # Show basic info
@@ -1004,4 +1084,4 @@ if __name__ == "__main__":
     print("🔴 Starting FIXED professional monitoring...")
 
     # Start the application
-    socketio.run(app, host="0.0.0.0", port=8000, debug=False)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=False)

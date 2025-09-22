@@ -121,38 +121,53 @@ class AudioMetadata:
         conn.commit()
         conn.close()
 
-    def get_metadata(self, filename):
-        """Get metadata for a specific filename - only for today's date"""
+    def _extract_date_from_filepath(self, filepath):
+        """Extract the recording date from the file path"""
+        import re
+
+        if not filepath:
+            return None
+
+        # Look for date pattern like "09-18-25" in the path
+        # Pattern: MM-DD-YY format
+        date_match = re.search(r"(\d{2})-(\d{2})-(\d{2})", filepath)
+
+        if date_match:
+            month, day, year = date_match.groups()
+            # Convert 2-digit year to 4-digit year (assuming 20xx)
+            full_year = f"20{year}"
+            # Convert to M-D-YYYY format to match database
+            return f"{int(month)}-{int(day)}-{full_year}"
+
+        return None
+
+    def get_metadata(self, filename, filepath):
+        """Get metadata for a specific filename and filepath for today's date only."""
         from datetime import datetime
 
-        # Get today's date in the same format as the database
         today = datetime.now()
         today_str = f"{today.month}-{today.day}-{today.year}"
-
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-
         try:
             cursor.execute(
                 """
                 SELECT * FROM audio_metadata 
-                WHERE filename = ? AND date_created = ?
+                WHERE filename = ? AND filepath = ? AND date_created = ?
                 ORDER BY time_recorded DESC
                 LIMIT 1
             """,
-                (filename, today_str),
+                (filename, filepath, today_str),
             )
-
             result = cursor.fetchone()
             if result:
                 data = dict(result)
-                # Convert transcript to "Transcript" key for backward compatibility
                 if data.get("transcript"):
                     data["Transcript"] = data["transcript"]
                 return data
             else:
-                return {}  # Return empty dict if not found
+                return {}
         finally:
             conn.close()
 
@@ -178,10 +193,15 @@ class AudioMetadata:
     ):
         """Add metadata for an audio file with optional coordinates"""
         from datetime import datetime
+        import re
 
-        # Get today's date in the same format as the database: M-D-YYYY
-        today = datetime.now()
-        date_created = f"{today.month}-{today.day}-{today.year}"
+        # Extract actual recording date from filepath instead of using today's date
+        date_created = self._extract_date_from_filepath(filepath)
+
+        # Fallback to today's date if extraction fails
+        if not date_created:
+            today = datetime.now()
+            date_created = f"{today.month}-{today.day}-{today.year}"
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -217,10 +237,8 @@ class AudioMetadata:
                     longitude,
                 ),
             )
-
             conn.commit()
             print(f"[Database] Added metadata for {filename} on {date_created}")
-
         except Exception as e:
             print(f"Error adding metadata for {filename}: {e}")
         finally:

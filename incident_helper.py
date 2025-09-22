@@ -1,11 +1,47 @@
-import re
-import json
 import sqlite3
-import textwrap
-import ollama
+import random
 
-# ----- Canonical label set -----
-LABELS = [
+DB_PATH = "audio_metadata_BACKUP.db"
+
+"""
+Advanced incident classifier using Ollama with:
+- Robust schema-constrained prompting (JSON mode with strict keys)
+- Domain glossary and edge-case rules (fast-path keyword classifier)
+- Few-shot exemplars
+- Deterministic decoding + retries and graceful fallbacks
+- Canonical label mapping & sanitization
+- Optional probability-style scores (model-estimated)
+- Batch APIs with simple concurrency
+
+Requirements:
+  pip install python-dotenv ollama tenacity rapidfuzz
+"""
+
+import json
+import os
+import re
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from typing import Dict, Iterable, List, Optional, Tuple
+
+from dotenv import load_dotenv
+from ollama import chat
+from ollama import ChatResponse
+from rapidfuzz import fuzz, process as rf_process
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
+
+# ------------------------------
+# Env & constants
+# ------------------------------
+load_dotenv()
+
+LABELS: List[str] = [
     "Assault/Domestic",
     "Theft/Burglary",
     "Disturbance/Noise",
@@ -26,198 +62,327 @@ LABELS = [
     "Alarm (Burglar/Panic)",
     "unknown",
 ]
-LABEL_SET = set(LABELS)
 
-# ----- LLM instructions (LLM decides incident vs unknown) -----
-SYSTEM = textwrap.dedent(
-    """
-You are a dispatcher-grade classifier for police/fire radio transcripts.
+# We keep a lowercased version for matching
+_LABELS_LOWER = [l.lower() for l in LABELS]
 
-Return ONLY this JSON object (no extra text):
-{"label":"<one-of-allowed-labels>"}
+# Synonym map → canonical label (lowercased keys)
+_SYNONYMS = {
+    # Assault / Domestic
+    "domestic": "Assault/Domestic",
+    "assault": "Assault/Domestic",
+    "battery": "Assault/Domestic",
+    "fight": "Assault/Domestic",
+    # Theft
+    "larceny": "Theft/Burglary",
+    "robbery": "Theft/Burglary",
+    "shoplift": "Theft/Burglary",
+    "break-in": "Theft/Burglary",
+    "b&e": "Theft/Burglary",
+    # Disturbance / Noise
+    "noise": "Disturbance/Noise",
+    "disturbance": "Disturbance/Noise",
+    "dispute": "Disturbance/Noise",
+    # Weapons
+    "shots fired": "Weapons/Shots Fired",
+    "gunshots": "Weapons/Shots Fired",
+    "weapon": "Weapons/Shots Fired",
+    # Traffic
+    "traffic stop": "Traffic Stop",
+    "stop vehicle": "Traffic Stop",
+    # MVA
+    "crash": "Motor Vehicle Accident",
+    "mva": "Motor Vehicle Accident",
+    "collision": "Motor Vehicle Accident",
+    # Medical
+    "medic": "Medical",
+    "ems": "Medical",
+    "overdose": "Medical",
+    # Fire
+    "alarm": "Fire Alarm",
+    "structure fire": "Structure Fire",
+    "house fire": "Structure Fire",
+    "car fire": "Brush/Vehicle Fire",
+    "brush": "Brush/Vehicle Fire",
+    # Gas/Electrical
+    "gas leak": "Gas/Electrical Hazard",
+    "odor of gas": "Gas/Electrical Hazard",
+    "electrical": "Gas/Electrical Hazard",
+    # Wires
+    "wires down": "Wires Down",
+    # Hazmat
+    "hazmat": "Hazmat",
+    "spill": "Hazmat",
+    # Animal
+    "dog": "Animal Complaint",
+    "animal": "Animal Complaint",
+    # Welfare
+    "well-being": "Welfare Check",
+    "welfare": "Welfare Check",
+    "wellbeing": "Welfare Check",
+    # Suspicious
+    "suspicious": "Suspicious Activity",
+    # Missing
+    "missing": "Missing Person",
+    # Alarm
+    "burglar": "Alarm (Burglar/Panic)",
+    "panic alarm": "Alarm (Burglar/Panic)",
+}
 
-Allowed labels (choose exactly one):
-- Assault/Domestic
-- Theft/Burglary
-- Disturbance/Noise
-- Weapons/Shots Fired
-- Traffic Stop
-- Motor Vehicle Accident
-- Medical
-- Fire Alarm
-- Structure Fire
-- Brush/Vehicle Fire
-- Gas/Electrical Hazard
-- Wires Down
-- Hazmat
-- Animal Complaint
-- Welfare Check
-- Suspicious Activity
-- Missing Person
-- Alarm (Burglar/Panic)
-- unknown
-
-Decision rules (the model decides):
-1) If the transmission is purely administrative/status/test (e.g., "clear of hospital", "back in service", "copy", "roger", availability/command updates) and does not describe any incident: return "unknown".
-2) Medical vs Fire: patient condition, injury, sickness, overdose, fall, chest pain, vomiting, psych evaluation transport → "Medical".
-3) Welfare Check: well-being check, suicidal ideation, elderly not answering → "Welfare Check".
-4) CO/smoke detectors, automatic alarms without confirmed fire → "Fire Alarm".
-5) Confirmed active fire in a structure → "Structure Fire".
-6) Brush/vehicle/dumpster fire → "Brush/Vehicle Fire".
-7) Wires down/arcing → "Wires Down".
-8) Odor of gas/electrical hazard inside (not exterior wires) → "Gas/Electrical Hazard".
-9) Suspicious package/object: if hazardous materials clearly involved → "Hazmat"; if merely suspicious/unknown → "Suspicious Activity".
-10) Shoplifting/larceny/burglary → "Theft/Burglary".
-11) Disturbance/Noise: disputes/parties/disorderly without assault/weapons.
-12) Assault/Domestic: assault/domestic violence; prioritize over Disturbance/Noise.
-13) Weapons/Shots Fired: shots heard or weapon brandished.
-14) Traffic Stop: officer-initiated stop (not crashes).
-15) Motor Vehicle Accident: crash/MVA (even if injuries).
-16) Alarm (Burglar/Panic): burglar/panic/hold-up alarms (NOT fire alarms).
-17) Animal Complaint: animal issues.
-18) Missing Person: missing/endangered person reports.
-19) If an incident clearly exists but the subtype is unclear → "unknown".
-20) If the transcript is empty/garbled or clearly no incident → "unknown".
-
-Output policy:
-- Output exactly JSON like {"label":"Medical"}; no explanations or extra keys.
-"""
-).strip()
-
-# Few-shot examples including admin/status -> unknown (LLM learns this, not a prefilter)
-FEWSHOTS = [
-    ("We're clear of the hospital and available in the city.", "unknown"),
-    ("Maintain command for a few minutes; assisting the medic.", "unknown"),
+# Simple keyword regexes for fast-path rule classification
+_RULES: List[Tuple[str, str]] = [
+    (r"\\b(domestic|assault|battery|fight)\\b", "Assault/Domestic"),
     (
-        "Check the well-being of a female with suicidal ideation at 649 Quentin Place.",
-        "Welfare Check",
-    ),
-    ("Medic 2 respond for psych eval, clear to enter per PD.", "Medical"),
-    (
-        "Black cylinder-shaped item on the sidewalk, caller unsure what it is.",
-        "Suspicious Activity",
-    ),
-    ("Residential CO detector activation at 206 Winslow Road.", "Fire Alarm"),
-    (
-        "Shoplifting at Bloomingdale's, sunglasses taken, suspect headed toward the mall.",
+        r"\\b(larceny|robbery|shoplift|break[- ]?in|b&e|burglary|stolen)\\b",
         "Theft/Burglary",
     ),
-    ("Unit 12 out on a traffic stop, blue Honda Civic.", "Traffic Stop"),
+    (r"\\b(noise|disturbance|dispute|loud music)\\b", "Disturbance/Noise"),
+    (r"\\b(shots? fired|gunshots?|weapon|firearm)\\b", "Weapons/Shots Fired"),
+    (r"\\b(traffic stop|stop vehicle)\\b", "Traffic Stop"),
     (
-        "Two-car crash at Beacon and Centre, no entrapment reported.",
+        r"\\b(motor vehicle accident|mva|crash|collision|fender bender)\\b",
         "Motor Vehicle Accident",
     ),
-    ("Vehicle on fire on the shoulder, flames visible.", "Brush/Vehicle Fire"),
+    (r"\\b(overdose|medic|ems|unconscious|difficulty breathing|cardiac)\\b", "Medical"),
+    (r"\\b(fire alarm|pull station|alarm activation)\\b", "Fire Alarm"),
+    (r"\\b(structure fire|house fire|building fire)\\b", "Structure Fire"),
+    (r"\\b(brush fire|car fire|vehicle fire|dumpster fire)\\b", "Brush/Vehicle Fire"),
+    (
+        r"\\b(gas leak|odor of gas|natural gas|electrical hazard)\\b",
+        "Gas/Electrical Hazard",
+    ),
+    (r"\\b(wires? down|utility wires?)\\b", "Wires Down"),
+    (r"\\b(hazmat|chemical spill|hazardous material)\\b", "Hazmat"),
+    (r"\\b(dog|coyote|animal complaint|animal control)\\b", "Animal Complaint"),
+    (r"\\b(welfare check|well[- ]?being|section 12)\\b", "Welfare Check"),
+    (r"\\b(suspicious|prowler|peeping|tampering)\\b", "Suspicious Activity"),
+    (r"\\b(missing person|missing juvenile|silver alert)\\b", "Missing Person"),
+    (r"\\b(burglar alarm|panic alarm|hold[- ]?up alarm)\\b", "Alarm (Burglar/Panic)"),
 ]
 
 
-def build_user_prompt(transcript: str) -> str:
-    label_list = ", ".join(LABELS)
-    examples = [
-        f'Example Incident: {t}\nExample Output: {{"label":"{y}"}}' for t, y in FEWSHOTS
-    ]
-    base = (
-        "Classify the following radio transcript using EXACTLY one allowed label. "
-        'If there is no incident (admin/status/test only), return "unknown". '
-        'If there is an incident but the type is unclear, use "unknown". '
-        f"Allowed: {label_list}. "
-        'Return ONLY JSON like {"label":"Medical"}.\n\nIncident:\n'
-    )
-    return "\n".join(examples) + "\n\n" + base + (transcript or "")
+@dataclass
+class LLMResult:
+    label: str
+    rationale: Optional[str] = None
+    scores: Optional[Dict[str, float]] = None  # pseudo-probabilities from the model
 
 
-THINK_RE = re.compile(r"<think>.*?</think>", flags=re.DOTALL)
+def _normalize_text(s: str) -> str:
+    return re.sub(r"\s+", " ", s).strip()
 
 
-def clean_reasoning(text: str) -> str:
-    return THINK_RE.sub("", text).strip()
+def _canonicalize(label: str) -> str:
+    """Map arbitrary label text to the closest canonical LABELS.
+    Uses direct match, synonyms, and fuzzy fallback. Defaults to 'unknown'.
+    """
+    raw = (label or "").strip().lower()
+    if not raw:
+        return "unknown"
+    # direct match
+    if raw in _LABELS_LOWER:
+        return LABELS[_LABELS_LOWER.index(raw)]
+    # synonyms
+    for k, v in _SYNONYMS.items():
+        if k in raw:
+            return v
+    # fuzzy
+    best, score, _ = rf_process.extractOne(raw, LABELS, scorer=fuzz.WRatio)
+    return best if (score or 0) >= 85 else "unknown"
 
 
-def parse_label(raw: str) -> str:
-    raw = clean_reasoning(raw)
-    m = re.search(r"\{.*\}", raw, flags=re.DOTALL)
-    if m:
-        raw = m.group(0)
+def _rules_fast_path(text: str) -> Optional[str]:
+    t = text.lower()
+    for pat, lab in _RULES:
+        if re.search(pat, t):
+            return lab
+    return None
+
+
+# ------------------------------
+# Prompting
+# ------------------------------
+
+_GLOSSARY = {
+    "Assault/Domestic": "Violence or threat thereof between individuals, incl. domestic/family incidents.",
+    "Theft/Burglary": "Taking property, shoplifting, robbery, break-ins (B&E).",
+    "Disturbance/Noise": "Disputes, loud noise, nuisance calls without violence.",
+    "Weapons/Shots Fired": "Reports of firearms, gunshots, armed subjects.",
+    "Traffic Stop": "Officer-initiated vehicle stop for violations.",
+    "Motor Vehicle Accident": "Crashes, collisions, MVAs (with/without injuries).",
+    "Medical": "Medical aid, overdoses, EMS responses.",
+    "Fire Alarm": "Fire alarm activations without confirmed fire.",
+    "Structure Fire": "Confirmed or likely building/structure fire.",
+    "Brush/Vehicle Fire": "Fires involving vegetation or vehicles/dumpsters.",
+    "Gas/Electrical Hazard": "Odor of gas, gas leaks, electrical hazards.",
+    "Wires Down": "Downed utility wires creating hazards.",
+    "Hazmat": "Hazardous materials/chemical incidents.",
+    "Animal Complaint": "Animal control, dangerous/loose animals.",
+    "Welfare Check": "Requested check on person’s wellbeing.",
+    "Suspicious Activity": "Prowlers, suspicious persons/vehicles, tampering.",
+    "Missing Person": "Missing/overdue person or juvenile.",
+    "Alarm (Burglar/Panic)": "Security/panic/hold-up alarms (non-fire).",
+    "unknown": "Insufficient info to determine category.",
+}
+
+_LABEL_LIST_BULLET = "\n".join(f"- {k}: {_GLOSSARY[k]}" for k in LABELS)
+
+SYSTEM_PROMPT = f"""
+You are a disciplined incident labeler for public safety radio logs. You MUST:
+- Read the transcript and pick exactly ONE label from the allowed set.
+- If uncertain, choose "unknown".
+- Use the glossary definitions to disambiguate.
+- Return STRICT JSON with keys: label (string), rationale (string, concise), scores (object of label→0..1).
+Allowed labels and definitions:\n{_LABEL_LIST_BULLET}
+"""
+
+# Few-shot exemplars (concise & diverse). Keep short for context window.
+FEW_SHOTS: List[Tuple[str, str]] = [
+    ("Caller reports loud party, neighbors arguing, no weapons.", "Disturbance/Noise"),
+    (
+        "Two-car collision with airbag deployment on Washington St.",
+        "Motor Vehicle Accident",
+    ),
+    ("Panic alarm at the bank on Main St.", "Alarm (Burglar/Panic)"),
+    ("Odor of gas in the basement, requesting utility.", "Gas/Electrical Hazard"),
+    ("Male yelling he has a gun; neighbors heard two shots.", "Weapons/Shots Fired"),
+    ("Check on elderly male not answering phone since yesterday.", "Welfare Check"),
+    ("Possible shoplifting in progress at the pharmacy.", "Theft/Burglary"),
+    ("Brush fire behind the school, small area burning.", "Brush/Vehicle Fire"),
+    ("Residential fire alarm activation, no smoke visible.", "Fire Alarm"),
+    ("Female reports ex-boyfriend shoved her; minor injuries.", "Assault/Domestic"),
+]
+
+# ------------------------------
+# LLM call with retries & JSON-mode
+# ------------------------------
+
+
+class LLMError(Exception):
+    pass
+
+
+def _safe_json_loads(text: str) -> dict:
     try:
-        obj = json.loads(raw)
-        label = obj.get("label", "").strip()
-    except Exception:
-        # Fallback: find a known label in plain text
-        for lab in LABELS:
-            if re.search(rf"\b{re.escape(lab)}\b", raw, flags=re.IGNORECASE):
-                return lab
-        return "unknown"
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Attempt to extract JSON object from messy output
+        m = re.search(r"\{[\s\S]*\}", text)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except Exception:
+                pass
+        raise
 
-    alias_map = {
-        "burglary": "Theft/Burglary",
-        "larceny": "Theft/Burglary",
-        "shots fired": "Weapons/Shots Fired",
-        "weapons": "Weapons/Shots Fired",
-        "traffic": "Traffic Stop",
-        "mva": "Motor Vehicle Accident",
-        "burglar alarm": "Alarm (Burglar/Panic)",
-        "panic alarm": "Alarm (Burglar/Panic)",
-        "fire": "Structure Fire",
-        "other/unknown": "unknown",
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=0.5, min=0.5, max=2.0),
+    retry=retry_if_exception_type(LLMError),
+)
+def _query_llm(
+    transcript: str, model: str = os.getenv("OLLAMA_MODEL", "qwen2.5")
+) -> LLMResult:
+    user_prompt = {
+        "role": "user",
+        "content": (
+            "You will classify the following radio transcript into ONE label.\n"
+            "Transcript:"
+            f"\n\n{_normalize_text(transcript)}\n\n"
+            'Respond ONLY with a JSON object: {"label": string, "rationale": string, "scores": object}.\n'
+            f"The label MUST be one of: {', '.join(LABELS)}."
+        ),
     }
-    low = label.lower()
-    if low in alias_map:
-        label = alias_map[low]
 
-    if label not in LABEL_SET:
-        for lab in LABELS:
-            if lab.lower() == low:
-                return lab
-        return "unknown"
-    return label
+    # Insert few shots as system-style mini-context to reduce verbosity
+    examples = "\n".join([f"- '{t}' → {lab}" for t, lab in FEW_SHOTS])
+    shots_prompt = {
+        "role": "system",
+        "content": f"Examples (transcript → label):\n{examples}",
+    }
 
-
-def classify_incident(transcript: str) -> str:
-    """
-    LLM-only path: every transcript goes to the model.
-    The model decides incident vs unknown; we just enforce JSON and validate.
-    """
-    user_prompt = build_user_prompt(transcript)
-
-    def _call():
-        resp = ollama.chat(
-            model="deepseek-r1",
-            messages=[
-                {"role": "system", "content": SYSTEM},
-                {"role": "user", "content": user_prompt},
-            ],
-            format="json",  # ask Ollama for strict JSON
+    try:
+        resp: ChatResponse = chat(
+            model=model,
             options={
-                "temperature": 0.0,  # deterministic
-                "top_p": 1.0,
-                "num_ctx": 2048,
+                "temperature": 0.1,
+                "top_p": 0.9,
+                "seed": 7,
+                "num_ctx": 4096,
+                "stop": ["\n\n\n"],
+                "format": "json",  # ask for strict JSON when supported
             },
-            stream=False,
-        )
-        return resp.get("message", {}).get("content", "")
-
-    out = _call()
-    label = parse_label(out)
-    if label not in LABEL_SET:
-        # Retry with super-minimal prompt if parsing failed
-        short_prompt = (
-            'Return ONLY {"label":"<label>"} for this transcript.\n'
-            f"Allowed: {', '.join(LABELS)}.\n\nTranscript:\n{transcript or ''}"
-        )
-        resp = ollama.chat(
-            model="deepseek-r1",
             messages=[
-                {
-                    "role": "system",
-                    "content": 'Return ONLY compact JSON like {"label":"Medical"}.',
-                },
-                {"role": "user", "content": short_prompt},
+                {"role": "system", "content": SYSTEM_PROMPT},
+                shots_prompt,
+                user_prompt,
             ],
-            format="json",
-            options={"temperature": 0.0, "top_p": 1.0, "num_ctx": 1024},
-            stream=False,
         )
-        label = parse_label(resp.get("message", {}).get("content", ""))
-    
-    return label if label in LABEL_SET else "unknown"
+    except Exception as e:
+        raise LLMError(str(e))
 
+    text = (resp.get("message", {}) or {}).get("content", "").strip()
+    if not text:
+        raise LLMError("empty response")
+
+    try:
+        obj = _safe_json_loads(text)
+    except Exception as e:
+        # try a strict re-ask once in current retry attempt by coercing format off
+        try:
+            resp2: ChatResponse = chat(
+                model=model,
+                options={"temperature": 0.1, "top_p": 0.9, "seed": 7, "num_ctx": 4096},
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    shots_prompt,
+                    {
+                        "role": "user",
+                        "content": (
+                            'STRICT: Reply ONLY with JSON object {"label":, "rationale":, "scores":}.\n\n'
+                            f"Transcript: {_normalize_text(transcript)}"
+                        ),
+                    },
+                ],
+            )
+            obj = _safe_json_loads((resp2.get("message", {}) or {}).get("content", ""))
+        except Exception as e2:
+            raise LLMError(
+                f"Failed to parse JSON: {e}\nSecond attempt: {e2}\nRaw: {text[:400]}"
+            )
+
+    raw_label = obj.get("label", "unknown")
+    rationale = obj.get("rationale")
+    scores = obj.get("scores") if isinstance(obj.get("scores"), dict) else None
+    return LLMResult(label=_canonicalize(raw_label), rationale=rationale, scores=scores)
+
+
+# ------------------------------
+# Public API
+# ------------------------------
+
+
+def classify_incident(transcript: str, *, use_rules_first: bool = True) -> str:
+    if len(transcript.split()) < 5:
+        return "unknown"
+    """Classify a single transcript. Returns a canonical label from LABELS.
+
+    - Fast path rules can immediately classify common cases without LLM cost.
+    - Falls back to LLM with robust JSON prompt & canonicalization.
+    """
+    t = _normalize_text(transcript)
+    if use_rules_first:
+        rule_hit = _rules_fast_path(t)
+        if rule_hit:
+            return rule_hit
+
+    try:
+        res = _query_llm(t)
+        return res.label
+    except Exception:
+        # As last resort do fuzzy match against synonyms if any keyword hit
+        for k, v in _SYNONYMS.items():
+            if k in t.lower():
+                return v
+        return "unknown"

@@ -901,60 +901,150 @@
                 style="
                   display: flex;
                   align-items: center;
-                  gap: 8px;
+                  gap: 6px;
                   flex-wrap: wrap;
-                  font-size: 0.75rem;
+                  font-size: 0.7rem;
+                  line-height: 1.2;
                 "
               >
-                <div style="display: flex; align-items: center; gap: 4px">
+                <!-- Medical Emergency -->
+                <div style="display: flex; align-items: center; gap: 3px">
                   <div
                     style="
-                      width: 12px;
-                      height: 12px;
+                      width: 10px;
+                      height: 10px;
                       border-radius: 50%;
                       background: #dc2626;
                     "
                   ></div>
-                  <span style="color: #cbd5e1">High Priority</span>
+                  <span style="color: #cbd5e1">Medical Emergency</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px">
+                <!-- Fire Emergency -->
+                <div style="display: flex; align-items: center; gap: 3px">
                   <div
                     style="
-                      width: 12px;
-                      height: 12px;
+                      width: 10px;
+                      height: 10px;
                       border-radius: 50%;
                       background: #ea580c;
                     "
                   ></div>
-                  <span style="color: #cbd5e1">Fire/Emergency</span>
+                  <span style="color: #cbd5e1">Fire Emergency</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px">
+                <!-- Motor Vehicle Accident -->
+                <div style="display: flex; align-items: center; gap: 3px">
                   <div
                     style="
-                      width: 12px;
-                      height: 12px;
+                      width: 10px;
+                      height: 10px;
+                      border-radius: 50%;
+                      background: #dc2626;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Vehicle Accident</span>
+                </div>
+                <!-- Police Operations -->
+                <div style="display: flex; align-items: center; gap: 3px">
+                  <div
+                    style="
+                      width: 10px;
+                      height: 10px;
                       border-radius: 50%;
                       background: #2563eb;
                     "
                   ></div>
-                  <span style="color: #cbd5e1">Police Response</span>
+                  <span style="color: #cbd5e1">Police Operation</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px">
+                <!-- Suspicious Activity -->
+                <div style="display: flex; align-items: center; gap: 3px">
                   <div
                     style="
-                      width: 12px;
-                      height: 12px;
+                      width: 10px;
+                      height: 10px;
+                      border-radius: 50%;
+                      background: #7c3aed;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Suspicious Activity</span>
+                </div>
+                <!-- Traffic Violation -->
+                <div style="display: flex; align-items: center; gap: 3px">
+                  <div
+                    style="
+                      width: 10px;
+                      height: 10px;
                       border-radius: 50%;
                       background: #d97706;
                     "
                   ></div>
-                  <span style="color: #cbd5e1">Hazards/Traffic</span>
+                  <span style="color: #cbd5e1">Traffic Violation</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px">
+                <!-- Domestic Disturbance -->
+                <div style="display: flex; align-items: center; gap: 3px">
                   <div
                     style="
-                      width: 12px;
-                      height: 12px;
+                      width: 10px;
+                      height: 10px;
+                      border-radius: 50%;
+                      background: #dc2626;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Domestic Issue</span>
+                </div>
+                <!-- Alarm Activation -->
+                <div style="display: flex; align-items: center; gap: 3px">
+                  <div
+                    style="
+                      width: 10px;
+                      height: 10px;
+                      border-radius: 50%;
+                      background: #d97706;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Alarm</span>
+                </div>
+                <!-- Theft/Burglary -->
+                <div style="display: flex; align-items: center; gap: 3px">
+                  <div
+                    style="
+                      width: 10px;
+                      height: 10px;
+                      border-radius: 50%;
+                      background: #7c2d12;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Theft/Burglary</span>
+                </div>
+                <!-- Welfare Check -->
+                <div style="display: flex; align-items: center; gap: 3px">
+                  <div
+                    style="
+                      width: 10px;
+                      height: 10px;
+                      border-radius: 50%;
+                      background: #0891b2;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Welfare Check</span>
+                </div>
+                <!-- Found Property -->
+                <div style="display: flex; align-items: center; gap: 3px">
+                  <div
+                    style="
+                      width: 10px;
+                      height: 10px;
+                      border-radius: 50%;
+                      background: #16a34a;
+                    "
+                  ></div>
+                  <span style="color: #cbd5e1">Found Property</span>
+                </div>
+                <!-- Unknown -->
+                <div style="display: flex; align-items: center; gap: 3px">
+                  <div
+                    style="
+                      width: 10px;
+                      height: 10px;
                       border-radius: 50%;
                       background: #64748b;
                     "
@@ -1366,10 +1456,27 @@
 
       // Filter incidents by type
       function filterByType(type) {
-        console.log("=== FILTER DEBUG ===");
+        console.log("=== ENHANCED FILTER DEBUG ===");
         console.log("Filter button clicked, type:", type);
         console.log("Current allIncidents length:", allIncidents.length);
         console.log("Current filter:", currentFilter);
+
+        // DEEP DEBUG: Check allIncidents array structure
+        if (allIncidents.length > 0) {
+          console.log("Sample incident structure:", {
+            id: allIncidents[0].id,
+            incident_type: allIncidents[0].incident_type,
+            hasIncidentType: allIncidents[0].hasOwnProperty("incident_type"),
+          });
+
+          // Count incident types in allIncidents
+          const typeCounts = {};
+          allIncidents.forEach((inc) => {
+            const incType = inc.incident_type;
+            typeCounts[incType] = (typeCounts[incType] || 0) + 1;
+          });
+          console.log("Incident type counts in allIncidents:", typeCounts);
+        }
 
         currentFilter = type;
 
@@ -1390,9 +1497,18 @@
           displayFilteredIncidents(allIncidents);
         } else {
           // Filter and show specific type
-          const filtered = allIncidents.filter(
-            (incident) => incident.incident_type === type
+          console.log(
+            `FILTERING: Looking for incidents with incident_type === "${type}"`
           );
+          const filtered = allIncidents.filter((incident) => {
+            const matches = incident.incident_type === type;
+            if (!matches && incident.incident_type) {
+              console.log(
+                `No match: "${incident.incident_type}" !== "${type}"`
+              );
+            }
+            return matches;
+          });
           console.log(
             "Filtered incidents for type",
             type,
@@ -1438,10 +1554,132 @@
             incident.id,
             incident.incident_type
           );
-          addIncidentToFeed(incident, false);
+          // CRITICAL FIX: Create incident HTML directly without duplicate check
+          createIncidentHtml(incident);
         });
 
         console.log("=== END DISPLAY FILTERED INCIDENTS ===");
+      }
+
+      // Create incident HTML and add to feed (without duplicate check for filtering)
+      function createIncidentHtml(incident) {
+        const liveFeed = document.getElementById("liveFeed");
+
+        // Clear loading message if it exists
+        if (liveFeed.querySelector(".loading")) {
+          liveFeed.innerHTML = "";
+        }
+
+        const incidentEl = document.createElement("div");
+        incidentEl.className = "incident-card";
+        incidentEl.dataset.incidentId = incident.id;
+
+        // Get incident type class
+        const typeClass = getIncidentTypeClass(incident.incident_type);
+
+        // Calculate confidence percentage
+        const confidencePercent = Math.round((incident.confidence || 0) * 100);
+
+        incidentEl.innerHTML = `
+          <div class="incident-header">
+            <span class="incident-type-badge ${typeClass}">
+              ${formatIncidentType(incident.incident_type)}
+            </span>
+            <span class="incident-time">${incident.time_recorded}</span>
+          </div>
+
+          <div class="incident-transcript">
+            "${incident.transcript}"
+          </div>
+
+          <div class="incident-meta">
+            <div class="meta-item">
+              <div class="meta-label">System</div>
+              <div class="meta-value">${incident.system || "Unknown"}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Department</div>
+              <div class="meta-value">${incident.department || "Unknown"}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Channel</div>
+              <div class="meta-value">${incident.channel || "Unknown"}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Frequency</div>
+              <div class="meta-value">${incident.frequency || "Unknown"}</div>
+            </div>
+            ${
+              incident.formatted_address
+                ? `
+            <div class="meta-item">
+              <div class="meta-label">Location</div>
+              <div class="meta-value">${incident.formatted_address}</div>
+            </div>
+            `
+                : ""
+            }
+            <div class="meta-item">
+              <div class="meta-label">Confidence</div>
+              <div class="meta-value">
+                <div class="confidence-meter">
+                  <div class="confidence-bar">
+                    <div class="confidence-fill" style="width: ${confidencePercent}%"></div>
+                  </div>
+                  <span class="confidence-text">${confidencePercent}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="incident-actions">
+            <!-- ALWAYS show audio button for every incident -->
+            <button class="action-btn play" onclick="playAudio('${
+              incident.audio_filename || "no-audio"
+            }', '${incident.system} - ${incident.department}', ${incident.id})"
+                    ${
+                      !incident.audio_filename ||
+                      incident.audio_status === "missing"
+                        ? 'title="Audio not available" style="opacity: 0.7;" disabled'
+                        : ""
+                    }>
+              <i class="fas fa-play"></i>
+              ${
+                !incident.audio_filename || incident.audio_status === "missing"
+                  ? "No Audio"
+                  : "Play Audio"
+              }
+            </button>
+            
+            <!-- ONLY show "Show on Map" button for incidents with actual locations -->
+            ${
+              incident.formatted_address &&
+              incident.formatted_address !== "Unknown" &&
+              incident.formatted_address !== ""
+                ? `
+              <button class="action-btn" onclick="showOnMap(${incident.id})" title="Highlight this incident on map">
+                <i class="fas fa-map-marker-alt"></i>
+                Show on Map
+              </button>
+            `
+                : ""
+            }
+            
+            ${
+              incident.maps_link
+                ? `
+              <a href="${incident.maps_link}" target="_blank" class="action-btn">
+                <i class="fas fa-external-link-alt"></i>
+                Google Maps
+              </a>
+            `
+                : ""
+            }
+          </div>
+        `;
+
+        // Add to feed
+        liveFeed.appendChild(incidentEl);
       }
 
       // Get count of currently visible incidents
@@ -1656,16 +1894,19 @@
           <div class="incident-actions">
             <!-- ALWAYS show audio button for every incident -->
             <button class="action-btn play" onclick="playAudio('${
-              incident.audio_filename
-            }', '${incident.system} - ${incident.department}')"
+              incident.audio_filename || "no-audio"
+            }', '${incident.system} - ${incident.department}', ${incident.id})"
                     ${
+                      !incident.audio_filename ||
                       incident.audio_status === "missing"
-                        ? 'title="Audio may not be available" style="opacity: 0.7;"'
+                        ? 'title="Audio not available" style="opacity: 0.7;" disabled'
                         : ""
                     }>
               <i class="fas fa-play"></i>
               ${
-                incident.audio_status === "missing" ? "Audio (?)" : "Play Audio"
+                !incident.audio_filename || incident.audio_status === "missing"
+                  ? "No Audio"
+                  : "Play Audio"
               }
             </button>
             
@@ -1851,34 +2092,47 @@
         createIncidentMarker(incident, lat, lng);
       }
 
-      // Professional Color System Based on Incident Type
+      // Professional Color System Based on Actual Incident Types
       function getIncidentColor(incidentType) {
-        // Comprehensive color mapping for all incident types
+        // Color mapping based on actual incident types found in the database
         const colors = {
-          // High Priority - Red variants
+          // High Priority Emergency - Red
+          medical_emergency: "#dc2626",
+          fire_emergency: "#ea580c",
+          motor_vehicle_accident: "#dc2626",
+          domestic_disturbance: "#dc2626",
+
+          // Police Operations - Blue shades
+          police_operation: "#2563eb",
+          suspicious_activity: "#7c3aed",
+          welfare_check: "#0891b2",
+
+          // Traffic/Public Safety - Orange/Amber
+          traffic_violation: "#d97706",
+          alarm_activation: "#d97706",
+
+          // Property/Theft - Brown
+          theft_burglary: "#7c2d12",
+
+          // Other/Non-emergency - Green/Gray
+          found_property: "#16a34a",
+
+          // Legacy mappings for backwards compatibility
           "Assault/Domestic": "#dc2626",
           "Weapons/Shots Fired": "#991b1b",
           "Motor Vehicle Accident": "#dc2626",
           Medical: "#dc2626",
           "Structure Fire": "#dc2626",
           "Alarm (Burglar/Panic)": "#dc2626",
-
-          // Fire/Emergency - Orange/Red variants
           "Fire Alarm": "#ea580c",
           "Brush/Vehicle Fire": "#ea580c",
-
-          // Hazards - Amber/Orange variants
           "Gas/Electrical Hazard": "#d97706",
           "Wires Down": "#ca8a04",
           "Disturbance/Noise": "#d97706",
-
-          // Police Response - Blue variants
           "Traffic Stop": "#2563eb",
           "Welfare Check": "#0891b2",
           "Suspicious Activity": "#7c3aed",
           "Missing Person": "#be185d",
-
-          // Other/Lower Priority
           "Theft/Burglary": "#7c2d12",
           Hazmat: "#7c2d12",
           "Animal Complaint": "#16a34a",
@@ -1937,19 +2191,21 @@
             </div>
             <!-- Audio playback and navigation -->
             <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-              <button onclick="playAudio('${incident.audio_filename}', '${
-            incident.system
-          } - ${incident.department}')" 
-                      style="background: #059669; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.875rem; cursor: pointer; font-weight: 600;"
+              <button onclick="playAudio('${
+                incident.audio_filename || "no-audio"
+              }', '${incident.system} - ${incident.department}', ${
+            incident.id
+          })" 
+                      style="background: ${
+                        !incident.audio_filename ? "#6b7280" : "#059669"
+                      }; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.875rem; cursor: pointer; font-weight: 600;"
                       ${
-                        incident.audio_status === "missing"
-                          ? 'title="Audio may not be available"'
+                        !incident.audio_filename
+                          ? 'title="Audio not available" disabled'
                           : ""
                       }>
                 <i class="fas fa-play"></i> ${
-                  incident.audio_status === "missing"
-                    ? "Audio (?)"
-                    : "Play Audio"
+                  !incident.audio_filename ? "No Audio" : "Play Audio"
                 }
               </button>
               
@@ -2031,26 +2287,38 @@
       }
 
       // Audio Functions
-      function playAudio(filename, title) {
-        if (!filename) return;
+      function playAudio(filename, title, incidentId) {
+        if (!filename || filename === "no-audio") {
+          alert("Audio not available for this incident");
+          return;
+        }
 
         const audioElement = document.getElementById("audioElement");
         const audioInfo = document.getElementById("audioInfo");
         const playPauseBtn = document.getElementById("audioPlayPause");
 
-        audioElement.src = `/audio/${filename}`;
+        // CRITICAL FIX: Include incident ID to get the correct audio file
+        const audioUrl = incidentId
+          ? `/audio/${filename}?incident_id=${incidentId}`
+          : `/audio/${filename}`;
+        console.log("🎵 Attempting to play audio:", audioUrl);
+
+        audioElement.src = audioUrl;
         audioInfo.textContent = title;
         audioPlayer.classList.add("active");
 
         audioElement
           .play()
           .then(() => {
+            console.log("✅ Audio playback started successfully");
             playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
             currentAudio = filename;
           })
           .catch((error) => {
             console.error("❌ Audio playback failed:", error);
-            audioInfo.textContent = "Audio playback failed";
+            console.error("Failed URL:", audioUrl);
+            audioInfo.textContent = `Audio playback failed: ${error.message}`;
+            alert(`Audio playback failed: ${error.message}`);
           });
       }
 
