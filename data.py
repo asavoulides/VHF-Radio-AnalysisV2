@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Police Scanner Data Processing Module
+Police Scanner Data Processing Module (idempotent + NULL-safe)
 """
 import sqlite3
 import os
@@ -17,63 +17,59 @@ class AudioMetadata:
     def __init__(self):
         # Use environment variable for database path
         db_path = os.getenv("DB_PATH", "Logs/audio_metadata.db")
-        self.directory = os.path.dirname(db_path)
+        self.directory = os.path.dirname(db_path) or "."
         os.makedirs(self.directory, exist_ok=True)
         self.db_path = db_path
         self._init_database()
 
+    # ----------------------------- schema & indexes -----------------------------
+
     def _init_database(self):
-        """Initialize the SQLite database and create tables if they don't exist"""
+        """Initialize the SQLite database and create tables if they don't exist,
+        dedupe by filepath, then enforce a UNIQUE(filepath) index so UPSERT works.
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # Check if table exists and has correct schema
+        # Create main table (if missing)
         cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='audio_metadata'"
-        )
-        table_exists = cursor.fetchone() is not None
-
-        if not table_exists:
-            # Create main metadata table with correct schema
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS audio_metadata (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    filename TEXT NOT NULL,
-                    time_recorded TEXT NOT NULL,
-                    transcript TEXT,
-                    confidence REAL DEFAULT 0.0,
-                    incident_type TEXT DEFAULT 'unknown',
-                    address TEXT,
-                    formatted_address TEXT,
-                    maps_link TEXT,
-                    system TEXT,
-                    department TEXT,
-                    channel TEXT,
-                    modulation TEXT,
-                    frequency TEXT,
-                    tgid TEXT,
-                    filepath TEXT,
-                    date_created TEXT NOT NULL,
-                    original_filename TEXT,
-                    latitude REAL,
-                    longitude REAL
-                )
             """
+            CREATE TABLE IF NOT EXISTS audio_metadata (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename TEXT NOT NULL,
+                time_recorded TEXT NOT NULL,
+                transcript TEXT,
+                confidence REAL DEFAULT 0.0,
+                incident_type TEXT DEFAULT 'unknown',
+                address TEXT,
+                formatted_address TEXT,
+                maps_link TEXT,
+                system TEXT,
+                department TEXT,
+                channel TEXT,
+                modulation TEXT,
+                frequency TEXT,
+                tgid TEXT,
+                filepath TEXT,
+                date_created TEXT NOT NULL,
+                original_filename TEXT,
+                latitude REAL,
+                longitude REAL
             )
-        else:
-            # Add missing columns if they don't exist
-            try:
-                cursor.execute("ALTER TABLE audio_metadata ADD COLUMN latitude REAL")
-            except sqlite3.OperationalError:
-                pass  # Column already exists
+            """
+        )
 
+        # Backfill missing cols for older DBs (no-ops if present)
+        for col, decl in [
+            ("latitude", "REAL"),
+            ("longitude", "REAL"),
+        ]:
             try:
-                cursor.execute("ALTER TABLE audio_metadata ADD COLUMN longitude REAL")
+                cursor.execute(f"ALTER TABLE audio_metadata ADD COLUMN {col} {decl}")
             except sqlite3.OperationalError:
-                pass  # Column already exists
+                pass
 
-        # Create incidents table for processed incidents (optional)
+        # Incidents table (unchanged)
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS incidents (
@@ -93,18 +89,19 @@ class AudioMetadata:
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (audio_file_id) REFERENCES audio_metadata (id)
             )
-        """
+            """
         )
 
-        # Create index for faster queries
+        # Helpful indexes
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_time_recorded ON audio_metadata(time_recorded)"
         )
-
-        # Check if incidents table has time_recorded or timestamp column
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_formatted_address ON audio_metadata(formatted_address)"
+        )
+        # Incidents time index (guard both variants)
         cursor.execute("PRAGMA table_info(incidents)")
         incidents_columns = [row[1] for row in cursor.fetchall()]
-
         if "time_recorded" in incidents_columns:
             cursor.execute(
                 "CREATE INDEX IF NOT EXISTS idx_incidents_time_recorded ON incidents(time_recorded)"
@@ -114,62 +111,88 @@ class AudioMetadata:
                 "CREATE INDEX IF NOT EXISTS idx_incidents_timestamp ON incidents(timestamp)"
             )
 
+        # --- Deduplicate existing rows by filepath (keep newest id) ---
+        # If filepath is NULL in some old rows, ignore those in grouping.
         cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_formatted_address ON audio_metadata(formatted_address)"
+            """
+            DELETE FROM audio_metadata
+            WHERE filepath IS NOT NULL
+              AND id NOT IN (
+                    SELECT MAX(id) FROM audio_metadata
+                    WHERE filepath IS NOT NULL
+                    GROUP BY filepath
+              )
+              AND filepath IN (
+                    SELECT filepath FROM audio_metadata
+                    WHERE filepath IS NOT NULL
+                    GROUP BY filepath
+                    HAVING COUNT(*) > 1
+              )
+            """
+        )
+
+        # --- Enforce UNIQUE(filepath) for reliable UPSERTs ---
+        # Note: this will fail if any remaining duplicates exist, but we just cleaned them.
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_audio_metadata_filepath ON audio_metadata(filepath)"
         )
 
         conn.commit()
         conn.close()
 
+    # ------------------------------- utilities ---------------------------------
+
     def _extract_date_from_filepath(self, filepath):
-        """Extract the recording date from the file path"""
+        """Extract the recording date from the file path like '09-18-25' -> '9-18-2025'"""
         import re
 
         if not filepath:
             return None
 
-        # Look for date pattern like "09-18-25" in the path
-        # Pattern: MM-DD-YY format
-        date_match = re.search(r"(\d{2})-(\d{2})-(\d{2})", filepath)
-
-        if date_match:
-            month, day, year = date_match.groups()
-            # Convert 2-digit year to 4-digit year (assuming 20xx)
+        m = re.search(r"(\d{2})-(\d{2})-(\d{2})", filepath)
+        if m:
+            month, day, year = m.groups()
             full_year = f"20{year}"
-            # Convert to M-D-YYYY format to match database
             return f"{int(month)}-{int(day)}-{full_year}"
-
         return None
 
-    def get_metadata(self, filename, filepath):
-        """Get metadata for a specific filename and filepath for today's date only."""
-        from datetime import datetime
+    # ------------------------------- read path ---------------------------------
 
-        today = datetime.now()
-        today_str = f"{today.month}-{today.day}-{today.year}"
+    def get_metadata(self, filename, filepath):
+        """Return latest row for this file+date and a boolean already_processed
+       that is True if any row exists (even if transcript is NULL/empty)."""
+        date_from_path = self._extract_date_from_filepath(filepath)
+        if not date_from_path:
+            today = datetime.now()
+            date_from_path = f"{today.month}-{today.day}-{today.year}"
+    
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         try:
             cursor.execute(
                 """
-                SELECT * FROM audio_metadata 
-                WHERE filename = ? AND filepath = ? AND date_created = ?
+                SELECT *
+                FROM audio_metadata
+                WHERE filepath = ?
+                  AND date_created = ?
                 ORDER BY time_recorded DESC
                 LIMIT 1
-            """,
-                (filename, filepath, today_str),
+                """,
+                (filepath, date_from_path),
             )
-            result = cursor.fetchone()
-            if result:
-                data = dict(result)
-                if data.get("transcript"):
-                    data["Transcript"] = data["transcript"]
-                return data
-            else:
-                return {}
+            row = cursor.fetchone()
+            if not row:
+                return {"already_processed": False}
+    
+            data = dict(row)
+            data["already_processed"] = True   # row exists ⇒ processed, regardless of transcript
+            return data
         finally:
             conn.close()
+
+
+    # --------------------------------- write -----------------------------------
 
     def add_metadata(
         self,
@@ -191,36 +214,38 @@ class AudioMetadata:
         formatted_address=None,
         maps_link=None,
     ):
-        """Add metadata for an audio file with optional coordinates"""
-        from datetime import datetime
-        import re
-
-        # Extract actual recording date from filepath instead of using today's date
+        """Insert once per filepath. If row exists, do nothing.
+           A NULL/empty transcript still counts as 'processed'."""
+        # Compute date first, before touching the DB
         date_created = self._extract_date_from_filepath(filepath)
-
-        # Fallback to today's date if extraction fails
         if not date_created:
             today = datetime.now()
             date_created = f"{today.month}-{today.day}-{today.year}"
-
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
+    
+        conn = None
         try:
+            # Open connection first, then create cursor
+            conn = sqlite3.connect(self.db_path, timeout=30)
+            # Optional but helpful for concurrency with many threads:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            cursor = conn.cursor()
+    
             cursor.execute(
                 """
-                INSERT OR REPLACE INTO audio_metadata 
-                (filename, time_recorded, transcript, confidence, incident_type, 
-                 address, formatted_address, maps_link, system, department, channel, modulation, frequency, 
-                 tgid, filepath, date_created, original_filename, latitude, longitude)
+                INSERT INTO audio_metadata
+                    (filename, time_recorded, transcript, confidence, incident_type,
+                     address, formatted_address, maps_link, system, department, channel,
+                     modulation, frequency, tgid, filepath, date_created, original_filename,
+                     latitude, longitude)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+                ON CONFLICT(filepath) DO NOTHING
+                """,
                 (
                     filename,
                     time_recorded,
-                    transcript,
-                    confidence,
-                    incident_type,
+                    transcript,                     # may be NULL/empty; still "processed"
+                    float(confidence or 0.0),
+                    incident_type or "unknown",
                     address,
                     formatted_address,
                     maps_link,
@@ -232,14 +257,19 @@ class AudioMetadata:
                     tgid,
                     filepath,
                     date_created,
-                    filename,  # Use filename as original_filename
+                    filename,                       # original_filename
                     latitude,
                     longitude,
                 ),
             )
             conn.commit()
-            print(f"[Database] Added metadata for {filename} on {date_created}")
-        except Exception as e:
-            print(f"Error adding metadata for {filename}: {e}")
+            if cursor.rowcount == 0:
+                print(f"[Database] Skipped insert (already exists): {filename}")
+            else:
+                print(f"[Database] Inserted metadata for {filename} on {date_created}")
+        except sqlite3.Error as e:
+            print(f"SQLite error in add_metadata for {filename}: {e}")
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()
+    

@@ -7,7 +7,7 @@ from data import AudioMetadata
 import api
 from datetime import datetime, timedelta
 import utils
-import locationServices
+import location_services
 import incident_helper
 
 
@@ -65,8 +65,10 @@ def GetTimeCreated(filepath):
 def process_file(filepath):
     filename = os.path.basename(filepath)
     meta = Data.get_metadata(filename, filepath)
-    if "Transcript" in meta:
-        print(f"[Thread] Skipping {filename}, already processed today.")
+    if meta.get("already_processed"):
+        print(
+            f"[Thread] Skipping {filename}, already processed"
+        )
         return None
 
     print(f"[Thread] Transcribing {filename}")
@@ -108,12 +110,13 @@ def process_file(filepath):
     if address and address.strip():
         try:
             print(f"[Geocoding] Looking up coordinates for: {address}")
-            result = locationServices.geocode_newton(address)
+            result = location_services.geocode_newton(address)
             if result:
                 lat, lng, formatted_addr, url = result
                 latitude = lat
                 longitude = lng
                 formatted_address = formatted_addr or address
+                print(formatted_address)
                 maps_link = url
                 print(f"[Geocoding] ✓ Found coordinates: ({lat:.4f}, {lng:.4f})")
             else:

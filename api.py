@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from deepgram import DeepgramClient, PrerecordedOptions, FileSource
 from openai import OpenAI
 from utils import getPrompt
-
+import location_services
 # Load environment variables from .env file
 load_dotenv()
 
@@ -217,7 +217,7 @@ def getTranscript(audioPath):
         # Classify incident type based on the normalized transcript
 
         # Extract address information
-        address = extract_address(normalized_transcript)
+        address = location_services.normalize_address(normalized_transcript)
 
         return {
             "transcript": normalized_transcript,

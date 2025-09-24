@@ -18,7 +18,7 @@ def main():
         print("❌ Dashboard file not found!")
         sys.exit(1)
 
-    print("🌐 Root: http://localhost:4000")
+    print("🌐 Root: http://localhost:5000")
     print("⏹️ Press Ctrl+C to stop")
     print()
 

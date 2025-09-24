@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import os, googlemaps
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
-from __future__ import annotations
 import re
 import json
 from typing import Optional, List, Dict
@@ -34,9 +35,9 @@ OLLAMA_OPTIONS = {
 
 # Common US street suffixes (non-capturing)
 ST_SUFFIX = (
-    r"(?:St(?:\.|reet)?|Ave(?:\.|nue)?|Rd(?:\.|oad)?|Blvd(?:\.)?|Boulevard|"
+    r"(?:St(?:\.|reet)?|Ave(?:\.|nue)?|(?:Rd\.?|Road)|Blvd(?:\.)?|Boulevard|"
     r"Ln(?:\.|ane)?|Dr(?:\.|ive)?|Ct(?:\.|ourt)?|Pl(?:\.|ace)?|Ter(?:\.|race)?|"
-    r"Pkwy(?:\.)?|Parkway|Cir(?:\.|cle)?|Hwy(?:\.)?|Highway)"
+    r"(?:Pkwy\.?|Parkway)|Cir(?:\.|cle)?|(?:Hwy\.?|Highway))"
 )
 
 # (1) Full numbered street address (with optional unit/city/state/zip)
@@ -136,9 +137,7 @@ def _regex_extract(text: str) -> Optional[str]:
         if m.group("tag"):
             return span
     # Fallback second pass: accept bare place if nothing else matched
-    m = RE_NEIGHBORHOOD.search(text)
-    if m:
-        return m.group(0).strip()
+
 
     return None
 
@@ -214,9 +213,6 @@ def _ask_heavy_llm(text: str) -> str:
         m = re.search(r'"address"\s*:\s*"([^"]*)"', raw)
         return m.group(1).strip() if m else "NONE"
 
-# =========================
-# Public API
-# =========================
 def extract_address(text: str) -> str:
     """
     Public API: returns the most specific address-like span or "NONE".
@@ -224,8 +220,27 @@ def extract_address(text: str) -> str:
     hit = _regex_extract(text)
     if hit:
         return hit
+    print("LLM Launched")
     return _ask_heavy_llm(text)
 
+
+# =========================
+# Public API
+# =========================
+
+def normalize_address(address: str) -> Optional[str]:
+    """
+    Normalize an address string for geocoding.
+    Returns None if input is "NONE" or empty.
+    """
+    if len(address.split()) <= 5:
+        return None
+
+    address = extract_address(address)
+    addr = address.strip()
+    if not addr or addr.upper() == "NONE":
+        return None
+    return addr
 
 def geocode_newton(address: str):
     q = f"{address}, Newton, MA"
@@ -244,7 +259,8 @@ def geocode_newton(address: str):
 
 
 if __name__ == "__main__":
-    lat, lng, fa, url = geocode_newton("192 evelyn rd ")
-    print(lat, lng)
-    print(fa)
-    print(url)
+    print(
+        normalize_address(
+            "156 Arnold Road. They're reporting a male came to the door, stated he was a city worker, and was talking to them about illegal work that's being done on the property. He's sitting in his car across the street now, a silver sedan."
+        )
+    )
