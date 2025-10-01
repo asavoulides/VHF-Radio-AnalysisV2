@@ -70,7 +70,10 @@ def process_file(filepath):
             f"[Thread] Skipping {filename}, already processed"
         )
         return None
-
+    system = utils.get_system(filename)
+    if system != "Middlesex":
+        print("[Thread] Skipping non-Middlesex file:", filename)
+        return None
     print(f"[Thread] Transcribing {filename}")
     created_time = datetime.fromtimestamp(GetTimeCreated(filepath)).strftime("%H:%M:%S")
     transcription_result = api.getTranscript(filepath)

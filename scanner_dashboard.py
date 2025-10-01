@@ -319,7 +319,7 @@ def index():
 def live_updates():
     """Live updates page"""
     return render_template(
-        "live_updates_professional_v2.html", current_date=dashboard.current_date
+        "index.html", current_date=dashboard.current_date
     )
 
 
@@ -691,6 +691,20 @@ def api_debug_status():
                 "timestamp": datetime.now().isoformat(),
             }
         )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/lower_volume")
+def api_lower_volume():
+    """API endpoint to lower system volume"""
+    try:
+        import volume_control
+
+        success = volume_control.lower_system_volume()
+        if success:
+            return jsonify({"status": "volume_lowered"})
+        else:
+            return jsonify({"status": "failed_to_lower_volume"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

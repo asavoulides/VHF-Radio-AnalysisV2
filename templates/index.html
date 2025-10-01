@@ -1161,7 +1161,6 @@
           console.log("=== INITIAL DATA RECEIVED ===");
           console.log("Received data:", data);
 
-          // Store all incidents
           allIncidents = data.incidents || [];
           console.log(
             "allIncidents populated with",
@@ -1169,7 +1168,6 @@
             "incidents"
           );
 
-          // Clear existing feed and map
           const liveFeed = document.getElementById("liveFeed");
           liveFeed.innerHTML = "";
           processedIncidents.clear();
@@ -1180,11 +1178,8 @@
               '<div class="loading">No incidents found for today</div>';
           } else {
             // Sort incidents by ID (chronological order) then reverse for newest-first display
-            const sortedIncidents = data.incidents
-              .sort((a, b) => a.id - b.id)
-              .reverse();
-
-            sortedIncidents.forEach((incident, index) => {
+            const sortedIncidents = sortIncidentsByTime(data.incidents);
+            sortedIncidents.forEach((incident) => {
               try {
                 if (shouldShowIncident(incident)) {
                   addIncidentToFeed(incident, false);
@@ -1202,13 +1197,13 @@
 
           updateMapCounter();
           updateFeedCounter(getVisibleIncidentCount());
-          loadIncidentTypes(); // Refresh filter counts AFTER incidents are loaded
+          loadIncidentTypes();
           console.log("=== END INITIAL DATA PROCESSING ===");
         });
 
         socket.on("new_incidents", function (data) {
           // Sort new incidents by ID to maintain chronological order
-          const sortedNewIncidents = data.sort((a, b) => a.id - b.id);
+          const sortedNewIncidents = sortIncidentsByTime(data);
 
           sortedNewIncidents.forEach((incident) => {
             // Only add if not already processed (avoid duplicates)
@@ -1226,7 +1221,7 @@
 
           updateMapCounter();
           updateFeedCounter(getVisibleIncidentCount());
-          loadIncidentTypes(); // Refresh filter counts
+          loadIncidentTypes();
 
           // Show notification for new incidents (only for multiple incidents)
           if (data.length > 1) {
@@ -1542,7 +1537,7 @@
         }
 
         // Sort incidents by ID (newest first)
-        const sortedIncidents = incidents.sort((a, b) => b.id - a.id);
+        const sortedIncidents = sortIncidentsByTime(incidents);
         console.log(
           "Sorted incidents, first few IDs:",
           sortedIncidents.slice(0, 5).map((i) => i.id)
@@ -1680,6 +1675,13 @@
 
         // Add to feed
         liveFeed.appendChild(incidentEl);
+      }
+
+      // Sort incidents consistently by most recent time
+      function sortIncidentsByTime(incidents) {
+        return incidents.sort(
+          (a, b) => new Date(b.time_recorded) - new Date(a.time_recorded)
+        );
       }
 
       // Get count of currently visible incidents
