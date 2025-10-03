@@ -11,7 +11,7 @@ import location_services
 import incident_helper
 
 
-base_dir = "C:/Proscan/Recordings"
+base_dir = r"C:\Proscan\Recordings"
 Data = AudioMetadata()
 seen_files = set()
 seen_lock = threading.Lock()
@@ -75,6 +75,8 @@ def process_file(filepath):
         print("[Thread] Skipping non-Middlesex file:", filename)
         return None
     print(f"[Thread] Transcribing {filename}")
+    print(f"[Debug] Full filepath: {filepath}")
+    print(f"[Debug] File exists: {os.path.exists(filepath)}")
     created_time = datetime.fromtimestamp(GetTimeCreated(filepath)).strftime("%H:%M:%S")
     transcription_result = api.getTranscript(filepath)
 

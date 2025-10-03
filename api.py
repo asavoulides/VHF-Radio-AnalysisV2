@@ -6,10 +6,17 @@ from openai import OpenAI
 from utils import getPrompt
 import location_services
 # Load environment variables from .env file
-load_dotenv()
+import os as _os
+script_dir = _os.path.dirname(_os.path.abspath(__file__))
+env_path = _os.path.join(script_dir, '.env')
+load_dotenv(env_path)
 
 # Get the API key from the environment
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
+if not DEEPGRAM_API_KEY:
+    print("ERROR: DEEPGRAM_API_KEY not found in environment variables!")
+    print(f"Looking for .env file at: {env_path}")
+    print(f".env file exists: {_os.path.exists(env_path)}")
 
 # Address extraction patterns
 ADDRESS_PATTERNS = [
@@ -163,6 +170,22 @@ def normalize_police_codes(transcript):
 
 def getTranscript(audioPath):
     try:
+        # Verify file exists before processing
+        if not _os.path.exists(audioPath):
+            print(f"ERROR: File does not exist: {audioPath}")
+            return None
+        
+        if not _os.path.isfile(audioPath):
+            print(f"ERROR: Path is not a file: {audioPath}")
+            return None
+            
+        file_size = _os.path.getsize(audioPath)
+        if file_size == 0:
+            print(f"ERROR: File is empty: {audioPath}")
+            return None
+        
+        print(f"[Debug] Processing file: {audioPath} (size: {file_size} bytes)")
+        
         # Create Deepgram client using the API key
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
 
@@ -226,7 +249,9 @@ def getTranscript(audioPath):
         }
 
     except Exception as e:
-        print(f"Exception: {e}")
+        import traceback
+        print(f"Exception in getTranscript for {audioPath}: {e}")
+        print(f"Traceback: {traceback.format_exc()}")
         return None
 
 
