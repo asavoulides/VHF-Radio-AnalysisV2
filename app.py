@@ -66,9 +66,7 @@ def process_file(filepath):
     filename = os.path.basename(filepath)
     meta = Data.get_metadata(filename, filepath)
     if meta.get("already_processed"):
-        print(
-            f"[Thread] Skipping {filename}, already processed"
-        )
+        print(f"[Thread] Skipping {filename}, already processed")
         return None
     system = utils.get_system(filename)
     if system != "Middlesex":

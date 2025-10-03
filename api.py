@@ -5,10 +5,12 @@ from deepgram import DeepgramClient, PrerecordedOptions, FileSource
 from openai import OpenAI
 from utils import getPrompt
 import location_services
+
 # Load environment variables from .env file
 import os as _os
+
 script_dir = _os.path.dirname(_os.path.abspath(__file__))
-env_path = _os.path.join(script_dir, '.env')
+env_path = _os.path.join(script_dir, ".env")
 load_dotenv(env_path)
 
 # Get the API key from the environment
@@ -93,9 +95,6 @@ def extract_address(transcript):
     return None
 
 
-
-
-
 def normalize_police_codes(transcript):
     """Normalize spaced police codes to proper format"""
     # Pattern to match spaced numbers - handles both "4 91" and "49 1" formats
@@ -174,18 +173,18 @@ def getTranscript(audioPath):
         if not _os.path.exists(audioPath):
             print(f"ERROR: File does not exist: {audioPath}")
             return None
-        
+
         if not _os.path.isfile(audioPath):
             print(f"ERROR: Path is not a file: {audioPath}")
             return None
-            
+
         file_size = _os.path.getsize(audioPath)
         if file_size == 0:
             print(f"ERROR: File is empty: {audioPath}")
             return None
-        
+
         print(f"[Debug] Processing file: {audioPath} (size: {file_size} bytes)")
-        
+
         # Create Deepgram client using the API key
         deepgram = DeepgramClient(DEEPGRAM_API_KEY)
 
@@ -250,6 +249,7 @@ def getTranscript(audioPath):
 
     except Exception as e:
         import traceback
+
         print(f"Exception in getTranscript for {audioPath}: {e}")
         print(f"Traceback: {traceback.format_exc()}")
         return None
