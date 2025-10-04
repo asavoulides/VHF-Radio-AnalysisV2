@@ -63,6 +63,7 @@ class AudioMetadata:
         for col, decl in [
             ("latitude", "REAL"),
             ("longitude", "REAL"),
+            ("streetview_url", "TEXT"),
         ]:
             try:
                 cursor.execute(f"ALTER TABLE audio_metadata ADD COLUMN {col} {decl}")
@@ -160,12 +161,12 @@ class AudioMetadata:
 
     def get_metadata(self, filename, filepath):
         """Return latest row for this file+date and a boolean already_processed
-       that is True if any row exists (even if transcript is NULL/empty)."""
+        that is True if any row exists (even if transcript is NULL/empty)."""
         date_from_path = self._extract_date_from_filepath(filepath)
         if not date_from_path:
             today = datetime.now()
             date_from_path = f"{today.month}-{today.day}-{today.year}"
-    
+
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -184,13 +185,14 @@ class AudioMetadata:
             row = cursor.fetchone()
             if not row:
                 return {"already_processed": False}
-    
+
             data = dict(row)
-            data["already_processed"] = True   # row exists ⇒ processed, regardless of transcript
+            data["already_processed"] = (
+                True  # row exists ⇒ processed, regardless of transcript
+            )
             return data
         finally:
             conn.close()
-
 
     # --------------------------------- write -----------------------------------
 
@@ -213,15 +215,16 @@ class AudioMetadata:
         longitude=None,
         formatted_address=None,
         maps_link=None,
+        streetview_url=None,
     ):
         """Insert once per filepath. If row exists, do nothing.
-           A NULL/empty transcript still counts as 'processed'."""
+        A NULL/empty transcript still counts as 'processed'."""
         # Compute date first, before touching the DB
         date_created = self._extract_date_from_filepath(filepath)
         if not date_created:
             today = datetime.now()
             date_created = f"{today.month}-{today.day}-{today.year}"
-    
+
         conn = None
         try:
             # Open connection first, then create cursor
@@ -229,21 +232,21 @@ class AudioMetadata:
             # Optional but helpful for concurrency with many threads:
             conn.execute("PRAGMA journal_mode=WAL;")
             cursor = conn.cursor()
-    
+
             cursor.execute(
                 """
                 INSERT INTO audio_metadata
                     (filename, time_recorded, transcript, confidence, incident_type,
                      address, formatted_address, maps_link, system, department, channel,
                      modulation, frequency, tgid, filepath, date_created, original_filename,
-                     latitude, longitude)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     latitude, longitude, streetview_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(filepath) DO NOTHING
                 """,
                 (
                     filename,
                     time_recorded,
-                    transcript,                     # may be NULL/empty; still "processed"
+                    transcript,  # may be NULL/empty; still "processed"
                     float(confidence or 0.0),
                     incident_type or "unknown",
                     address,
@@ -257,9 +260,10 @@ class AudioMetadata:
                     tgid,
                     filepath,
                     date_created,
-                    filename,                       # original_filename
+                    filename,  # original_filename
                     latitude,
                     longitude,
+                    streetview_url,
                 ),
             )
             conn.commit()
@@ -272,4 +276,3 @@ class AudioMetadata:
         finally:
             if conn is not None:
                 conn.close()
-    

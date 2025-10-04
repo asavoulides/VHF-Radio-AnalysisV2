@@ -245,6 +245,8 @@
         margin-bottom: 1.5rem;
         overflow: hidden;
         transition: all 0.3s ease;
+        display: block !important;
+        visibility: visible !important;
       }
 
       .filter-header {
@@ -577,6 +579,82 @@
         border-left: 3px solid var(--accent-cyan);
       }
 
+      .incident-streetview {
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--glass-border);
+      }
+
+      .streetview-label {
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--light-400);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .streetview-image {
+        width: 100%;
+        height: 350px;
+        object-fit: cover;
+        display: block;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .streetview-image:hover {
+        transform: scale(1.01);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      }
+
+      .incident-streetview {
+        margin-bottom: 1rem;
+        border-radius: 12px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .streetview-label {
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--light-400);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .streetview-image {
+        width: 100%;
+        height: 280px;
+        object-fit: cover;
+        display: block;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .streetview-image:hover {
+        transform: scale(1.01);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      }
+
       .incident-meta {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -836,6 +914,32 @@
                 <div class="feed-counter" id="feedCounter">0 incidents</div>
               </div>
 
+              <!-- Address Filter Panel -->
+              <div class="filter-panel" id="addressFilterPanel">
+                <div class="filter-header">
+                  <h4 class="filter-title">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Filter by Location
+                  </h4>
+                  <button class="filter-toggle" id="addressFilterToggle">
+                    <i class="fas fa-chevron-down"></i>
+                  </button>
+                </div>
+                <div class="filter-content" id="addressFilterContent">
+                  <div class="filter-options">
+                    <button class="filter-btn active" data-address-filter="all" id="allAddressFilter">
+                      All Locations (<span id="totalAddressCount">0</span>)
+                    </button>
+                    <button class="filter-btn" data-address-filter="with-address" id="withAddressFilter">
+                      With Address (<span id="withAddressCount">0</span>)
+                    </button>
+                    <button class="filter-btn" data-address-filter="no-address" id="noAddressFilter">
+                      No Address (<span id="noAddressCount">0</span>)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <!-- Incident Type Filter Panel -->
               <div class="filter-panel" id="filterPanel">
                 <div class="filter-header">
@@ -1090,6 +1194,27 @@
       let currentFilter = "all";
       let allIncidents = [];
       let incidentTypeCounts = {};
+      let currentAddressFilter = 'all';
+
+      // Address filter function - defined early to ensure availability
+      function passesAddressFilter(incident) {
+        if (currentAddressFilter === 'all') {
+          return true;
+        }
+
+        const hasValidAddress = incident.formatted_address && 
+                              incident.formatted_address !== 'Unknown' && 
+                              incident.formatted_address.trim() !== '' &&
+                              incident.formatted_address !== 'Newton, MA, USA';
+
+        if (currentAddressFilter === 'with-address') {
+          return hasValidAddress;
+        } else if (currentAddressFilter === 'no-address') {
+          return !hasValidAddress;
+        }
+
+        return true;
+      }
 
       // Initialize application
       document.addEventListener("DOMContentLoaded", function () {
@@ -1158,15 +1283,14 @@
         });
 
         socket.on("initial_data", function (data) {
-          console.log("=== INITIAL DATA RECEIVED ===");
-          console.log("Received data:", data);
-
+          // Store current address filter state to preserve it
+          const savedAddressFilter = currentAddressFilter;
+          
+          // Process received data
           allIncidents = data.incidents || [];
-          console.log(
-            "allIncidents populated with",
-            allIncidents.length,
-            "incidents"
-          );
+
+          // Update address filter counters
+          setTimeout(updateAddressCounters, 100);
 
           const liveFeed = document.getElementById("liveFeed");
           liveFeed.innerHTML = "";
@@ -1197,8 +1321,28 @@
 
           updateMapCounter();
           updateFeedCounter(getVisibleIncidentCount());
+          
+          // Store current address filter state to preserve it
+          const savedInitialAddressFilter = currentAddressFilter;
+          
           loadIncidentTypes();
-          console.log("=== END INITIAL DATA PROCESSING ===");
+          
+          // Restore address filter state after a short delay
+          setTimeout(() => {
+            if (savedInitialAddressFilter && savedInitialAddressFilter !== 'all') {
+              currentAddressFilter = savedInitialAddressFilter;
+              // Re-activate the correct button
+              const addressFilterButtons = document.querySelectorAll('.address-filter-btn');
+              addressFilterButtons.forEach(btn => btn.classList.remove('active'));
+              const targetBtn = document.querySelector(`[data-address-filter="${savedInitialAddressFilter}"]`);
+              if (targetBtn) {
+                targetBtn.classList.add('active');
+              }
+              updateAddressCounters();
+              filterByType(currentFilter);
+            }
+          }, 200);
+
         });
 
         socket.on("new_incidents", function (data) {
@@ -1221,7 +1365,19 @@
 
           updateMapCounter();
           updateFeedCounter(getVisibleIncidentCount());
+          // Store current address filter state
+          const savedNewIncidentsAddressFilter = currentAddressFilter;
+          
           loadIncidentTypes();
+          
+          // Restore address filter state
+          setTimeout(() => {
+            if (savedNewIncidentsAddressFilter && savedNewIncidentsAddressFilter !== currentAddressFilter) {
+              currentAddressFilter = savedNewIncidentsAddressFilter;
+              updateAddressCounters();
+              filterByType(currentFilter);
+            }
+          }, 100);
 
           // Show notification for new incidents (only for multiple incidents)
           if (data.length > 1) {
@@ -1364,23 +1520,26 @@
           filterToggle.classList.toggle("collapsed");
         });
 
+        // Initialize address filter
+        initializeAddressFilter();
+
         // NOTE: loadIncidentTypes() is called AFTER incidents are loaded in initial_data event
-        console.log("Filter system initialized, waiting for incident data...");
+
       }
 
       // Load incident types and their counts
       function loadIncidentTypes() {
-        console.log("=== LOADING INCIDENT TYPES ===");
+
         fetch("/api/incident_types")
           .then((response) => response.json())
           .then((data) => {
-            console.log("Incident types API response:", data);
+
             updateFilterOptions(data);
             incidentTypeCounts = {};
             data.incident_types.forEach((item) => {
               incidentTypeCounts[item.type] = item.count;
             });
-            console.log("Incident type counts updated:", incidentTypeCounts);
+
           })
           .catch((error) => {
             console.error("Error loading incident types:", error);
@@ -1389,8 +1548,7 @@
 
       // Update filter options with incident types
       function updateFilterOptions(data) {
-        console.log("=== UPDATE FILTER OPTIONS ===");
-        console.log("Updating filter options with data:", data);
+
         const filterOptions = document.getElementById("filterOptions");
         const totalCount = document.getElementById("totalCount");
 
@@ -1406,12 +1564,10 @@
         const existingButtons = filterOptions.querySelectorAll(
           '.filter-btn:not([data-type="all"])'
         );
-        console.log("Removing existing buttons:", existingButtons.length);
+
         existingButtons.forEach((btn) => btn.remove());
 
-        console.log(
-          `Adding ${data.incident_types.length} incident type buttons`
-        );
+
 
         // Add incident type buttons
         data.incident_types.forEach((item) => {
@@ -1423,55 +1579,34 @@
           button.innerHTML = `${item.formatted} (${item.count})`;
 
           if (item.count > 0) {
-            console.log(`Adding click handler for: ${item.type}`);
             button.addEventListener("click", () => {
-              console.log(`CLICK HANDLER TRIGGERED for: ${item.type}`);
               filterByType(item.type);
             });
           }
 
           filterOptions.appendChild(button);
-          console.log(`Added button for ${item.type}: ${item.count} incidents`);
+
         });
 
         // Only add "All" button event listener if it doesn't already have one
         const allButton = filterOptions.querySelector('[data-type="all"]');
         if (allButton && !allButton.hasAttribute("data-listener-added")) {
-          console.log('Adding click handler for "All" button (first time)');
           allButton.addEventListener("click", () => {
-            console.log("ALL BUTTON CLICKED");
             filterByType("all");
           });
           allButton.setAttribute("data-listener-added", "true");
         } else if (allButton) {
-          console.log("All button already has listener, skipping");
+
         }
-        console.log("=== END UPDATE FILTER OPTIONS ===");
+
       }
 
       // Filter incidents by type
       function filterByType(type) {
-        console.log("=== ENHANCED FILTER DEBUG ===");
-        console.log("Filter button clicked, type:", type);
-        console.log("Current allIncidents length:", allIncidents.length);
-        console.log("Current filter:", currentFilter);
 
-        // DEEP DEBUG: Check allIncidents array structure
-        if (allIncidents.length > 0) {
-          console.log("Sample incident structure:", {
-            id: allIncidents[0].id,
-            incident_type: allIncidents[0].incident_type,
-            hasIncidentType: allIncidents[0].hasOwnProperty("incident_type"),
-          });
 
-          // Count incident types in allIncidents
-          const typeCounts = {};
-          allIncidents.forEach((inc) => {
-            const incType = inc.incident_type;
-            typeCounts[incType] = (typeCounts[incType] || 0) + 1;
-          });
-          console.log("Incident type counts in allIncidents:", typeCounts);
-        }
+
+
 
         currentFilter = type;
 
@@ -1481,53 +1616,37 @@
         });
 
         const targetButton = document.querySelector(`[data-type="${type}"]`);
-        console.log("Target button found:", !!targetButton);
+
         if (targetButton) {
           targetButton.classList.add("active");
         }
 
-        if (type === "all") {
-          console.log("Showing all incidents, count:", allIncidents.length);
-          // Show all incidents
-          displayFilteredIncidents(allIncidents);
-        } else {
-          // Filter and show specific type
-          console.log(
-            `FILTERING: Looking for incidents with incident_type === "${type}"`
-          );
-          const filtered = allIncidents.filter((incident) => {
-            const matches = incident.incident_type === type;
-            if (!matches && incident.incident_type) {
-              console.log(
-                `No match: "${incident.incident_type}" !== "${type}"`
-              );
-            }
-            return matches;
+        // Start with all incidents
+        let filtered = allIncidents;
+
+        // Apply incident type filter
+        if (type !== "all") {
+          filtered = allIncidents.filter((incident) => {
+            return incident.incident_type === type;
           });
-          console.log(
-            "Filtered incidents for type",
-            type,
-            ":",
-            filtered.length
-          );
-          console.log("Sample filtered incidents:", filtered.slice(0, 3));
-          displayFilteredIncidents(filtered);
         }
 
+        // Apply address filter
+        if (currentAddressFilter !== 'all') {
+          filtered = filtered.filter(incident => passesAddressFilter(incident));
+        }
+
+        displayFilteredIncidents(filtered);
+
         updateFeedCounter(getVisibleIncidentCount());
-        console.log("=== END FILTER DEBUG ===");
       }
 
       // Display filtered incidents
       function displayFilteredIncidents(incidents) {
-        console.log("=== DISPLAY FILTERED INCIDENTS ===");
-        console.log("Incidents to display:", incidents.length);
-
         const liveFeed = document.getElementById("liveFeed");
         liveFeed.innerHTML = "";
 
         if (incidents.length === 0) {
-          console.log("No incidents to show, displaying empty message");
           liveFeed.innerHTML = `
             <div class="loading">
               No incidents found for the selected filter
@@ -1538,22 +1657,11 @@
 
         // Sort incidents by ID (newest first)
         const sortedIncidents = sortIncidentsByTime(incidents);
-        console.log(
-          "Sorted incidents, first few IDs:",
-          sortedIncidents.slice(0, 5).map((i) => i.id)
-        );
 
         sortedIncidents.forEach((incident) => {
-          console.log(
-            "Adding incident to feed:",
-            incident.id,
-            incident.incident_type
-          );
           // CRITICAL FIX: Create incident HTML directly without duplicate check
           createIncidentHtml(incident);
         });
-
-        console.log("=== END DISPLAY FILTERED INCIDENTS ===");
       }
 
       // Create incident HTML and add to feed (without duplicate check for filtering)
@@ -1586,6 +1694,30 @@
           <div class="incident-transcript">
             "${incident.transcript}"
           </div>
+
+          ${
+            incident.streetview_url
+              ? `
+          <div class="incident-streetview">
+            <div class="streetview-label">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-street-view"></i>
+                Street View - ${incident.formatted_address || "incident location"}
+              </div>
+              <span class="streetview-hint">Click to open full size</span>
+            </div>
+            <div class="streetview-container">
+              <img src="${incident.streetview_url}" alt="Street View of ${
+                    incident.formatted_address || "incident location"
+                  }" 
+                   class="streetview-image" loading="lazy" 
+                   onerror="this.parentElement.parentElement.style.display='none'"
+                   onclick="window.open('${incident.streetview_url}', '_blank')">
+            </div>
+          </div>
+        `
+              : ""
+          }
 
           <div class="incident-meta">
             <div class="meta-item">
@@ -1853,6 +1985,30 @@
             "${incident.transcript}"
           </div>
 
+          ${
+            incident.streetview_url
+              ? `
+          <div class="incident-streetview">
+            <div class="streetview-label">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-street-view"></i>
+                Street View - ${incident.formatted_address || "incident location"}
+              </div>
+              <span class="streetview-hint">Click to open full size</span>
+            </div>
+            <div class="streetview-container">
+              <img src="${incident.streetview_url}" alt="Street View of ${
+                    incident.formatted_address || "incident location"
+                  }" 
+                   class="streetview-image" loading="lazy" 
+                   onerror="this.parentElement.parentElement.style.display='none'"
+                   onclick="window.open('${incident.streetview_url}', '_blank')">
+            </div>
+          </div>
+        `
+              : ""
+          }
+
           <div class="incident-meta">
             <div class="meta-item">
               <div class="meta-label">System</div>
@@ -2027,21 +2183,14 @@
           const lat = parseFloat(incident.latitude);
           const lng = parseFloat(incident.longitude);
 
-          // Validate coordinates are reasonable
-          if (
-            !isNaN(lat) &&
-            !isNaN(lng) &&
-            lat >= 42.25 &&
-            lat <= 42.4 &&
-            lng >= -71.35 &&
-            lng <= -71.15
-          ) {
+          // Use coordinates if they're valid numbers
+          if (!isNaN(lat) && !isNaN(lng)) {
             createIncidentMarker(incident, lat, lng);
             return;
           }
         }
 
-        // Fallback to address-based geocoding if no coordinates
+        // Skip incidents without coordinates or addresses
         if (
           !incident.formatted_address ||
           incident.formatted_address === "Unknown" ||
@@ -2049,9 +2198,6 @@
         ) {
           return;
         }
-
-        // Use static fallback only as last resort
-        geocodeFallback(incident);
       }
 
       // Static geocoding coordinates for Newton, MA areas (fallback when API unavailable)
@@ -2397,6 +2543,95 @@
           loadStats();
         }
       }, 60000); // Every 60 seconds instead of 30
+
+      // Address Filter Functionality
+
+      // Initialize address filter panel
+      function initializeAddressFilter() {
+        const addressFilterToggle = document.getElementById('addressFilterToggle');
+        const addressFilterContent = document.getElementById('addressFilterContent');
+        const addressFilterButtons = document.querySelectorAll('[data-address-filter]');
+
+        if (!addressFilterToggle || !addressFilterContent) {
+          console.log('Address filter elements not found');
+          return;
+        }
+
+        // Ensure address filter panel starts expanded
+        addressFilterContent.classList.remove('collapsed');
+        addressFilterToggle.classList.remove('collapsed');
+
+        // Toggle address filter panel
+        addressFilterToggle.addEventListener('click', () => {
+          addressFilterContent.classList.toggle('collapsed');
+          addressFilterToggle.classList.toggle('collapsed');
+        });
+
+        // Address filter button handlers
+        addressFilterButtons.forEach(button => {
+          button.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Remove active class from all address filter buttons
+            addressFilterButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            button.classList.add('active');
+            
+            // Update current address filter
+            currentAddressFilter = button.dataset.addressFilter;
+            
+            // Update counters and re-apply current incident type filter
+            updateAddressCounters();
+            filterByType(currentFilter);
+          });
+        });
+
+        // Initialize counters
+        updateAddressCounters();
+        console.log('Address filter initialized');
+      }
+
+      // Update address filter counters
+      function updateAddressCounters() {
+        if (!allIncidents || allIncidents.length === 0) {
+          updateAddressFilterDisplay(0, 0, 0);
+          return;
+        }
+
+        let withAddressCount = 0;
+        let noAddressCount = 0;
+        let totalCount = allIncidents.length;
+
+        allIncidents.forEach(incident => {
+          const hasValidAddress = incident.formatted_address && 
+                                incident.formatted_address !== 'Unknown' && 
+                                incident.formatted_address.trim() !== '' &&
+                                incident.formatted_address !== 'Newton, MA, USA';
+
+          if (hasValidAddress) {
+            withAddressCount++;
+          } else {
+            noAddressCount++;
+          }
+        });
+
+        updateAddressFilterDisplay(totalCount, withAddressCount, noAddressCount);
+      }
+
+      // Update address filter display counters
+      function updateAddressFilterDisplay(total, withAddress, noAddress) {
+        const totalEl = document.getElementById('totalAddressCount');
+        const withEl = document.getElementById('withAddressCount');
+        const noEl = document.getElementById('noAddressCount');
+
+        if (totalEl) totalEl.textContent = total;
+        if (withEl) withEl.textContent = withAddress;
+        if (noEl) noEl.textContent = noAddress;
+      }
+
+
+
     </script>
   </body>
 </html>

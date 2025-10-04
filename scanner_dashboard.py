@@ -223,7 +223,7 @@ class PoliceScannerDashboard:
                            incident_type, system, department, channel,
                            time_recorded, filepath, original_filename, filename,
                            date_created, latitude, longitude,
-                           confidence, frequency, modulation, tgid, maps_link
+                           confidence, frequency, modulation, tgid, maps_link, streetview_url
                     FROM audio_metadata 
                     WHERE date_created = ? AND transcript IS NOT NULL AND transcript != ''
                     ORDER BY time_recorded DESC, id DESC
@@ -318,9 +318,7 @@ def index():
 @app.route("/live")
 def live_updates():
     """Live updates page"""
-    return render_template(
-        "index.html", current_date=dashboard.current_date
-    )
+    return render_template("index.html", current_date=dashboard.current_date)
 
 
 @app.route("/audio/<path:filename>")
@@ -456,7 +454,7 @@ def api_incidents_filtered(incident_type):
                        incident_type, system, department, channel,
                        time_recorded, filepath, original_filename, filename,
                        date_created, latitude, longitude,
-                       confidence, frequency, modulation, tgid, maps_link
+                       confidence, frequency, modulation, tgid, maps_link, streetview_url
                 FROM audio_metadata 
                 WHERE date_created = ? AND incident_type = ?
                 ORDER BY time_recorded DESC, id DESC
@@ -694,6 +692,7 @@ def api_debug_status():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/api/lower_volume")
 def api_lower_volume():
     """API endpoint to lower system volume"""
@@ -907,7 +906,7 @@ def enhanced_monitor_database():
                                    incident_type, system, department, channel,
                                    time_recorded, filepath, original_filename, filename,
                                    date_created, latitude, longitude,
-                                   confidence, frequency, modulation, tgid, maps_link
+                                   confidence, frequency, modulation, tgid, maps_link, streetview_url
                             FROM audio_metadata 
                             WHERE date_created = ? AND id > ?
                             ORDER BY id ASC

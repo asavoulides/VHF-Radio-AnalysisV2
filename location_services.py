@@ -8,6 +8,7 @@ import json
 from typing import Optional, List, Dict
 from dataclasses import dataclass
 from ollama import chat
+from urllib.parse import urlencode
 
 
 load_dotenv()
@@ -138,7 +139,6 @@ def _regex_extract(text: str) -> Optional[str]:
             return span
     # Fallback second pass: accept bare place if nothing else matched
 
-
     return None
 
 
@@ -213,6 +213,7 @@ def _ask_heavy_llm(text: str) -> str:
         m = re.search(r'"address"\s*:\s*"([^"]*)"', raw)
         return m.group(1).strip() if m else "NONE"
 
+
 def extract_address(text: str) -> str:
     """
     Public API: returns the most specific address-like span or "NONE".
@@ -228,6 +229,7 @@ def extract_address(text: str) -> str:
 # Public API
 # =========================
 
+
 def normalize_address(address: str) -> Optional[str]:
     """
     Normalize an address string for geocoding.
@@ -240,7 +242,14 @@ def normalize_address(address: str) -> Optional[str]:
     addr = address.strip()
     if not addr or addr.upper() == "NONE":
         return None
+
+    # Return None if the address is just "Newton, MA, USA" (too generic)
+    if addr == "Newton, MA, USA":
+        return None
+
     return addr
+
+
 
 def geocode_newton(address: str):
     q = f"{address}, Newton, MA"
@@ -250,6 +259,11 @@ def geocode_newton(address: str):
     r = res[0]
     loc = r["geometry"]["location"]
     fa, pid = r["formatted_address"], r.get("place_id")
+
+    # Return None if the formatted address is too generic
+    if fa == "Newton, MA, USA":
+        return None
+
     url = (
         f"https://www.google.com/maps/search/?api=1&query={quote_plus(fa)}&query_place_id={pid}"
         if pid
@@ -258,9 +272,15 @@ def geocode_newton(address: str):
     return loc["lat"], loc["lng"], fa, url
 
 
+def streetview_url(lat: float, lng: float, size="640x400") -> str:
+    base = "https://maps.googleapis.com/maps/api/streetview"
+    params = {
+        "size": size,
+        "location": f"{lat},{lng}",
+        "key": gmaps.key,
+    }
+    return f"{base}?{urlencode(params)}"
+
+
 if __name__ == "__main__":
-    print(
-        normalize_address(
-            "156 Arnold Road. They're reporting a male came to the door, stated he was a city worker, and was talking to them about illegal work that's being done on the property. He's sitting in his car across the street now, a silver sedan."
-        )
-    )
+    print(streetview_url(42.3372, -71.2092))

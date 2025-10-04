@@ -73,8 +73,8 @@ def process_file(filepath):
         print("[Thread] Skipping non-Middlesex file:", filename)
         return None
     print(f"[Thread] Transcribing {filename}")
-    print(f"[Debug] Full filepath: {filepath}")
-    print(f"[Debug] File exists: {os.path.exists(filepath)}")
+    # print(f"[Debug] Full filepath: {filepath}")
+    # print(f"[Debug] File exists: {os.path.exists(filepath)}")
     created_time = datetime.fromtimestamp(GetTimeCreated(filepath)).strftime("%H:%M:%S")
     transcription_result = api.getTranscript(filepath)
 
@@ -109,6 +109,7 @@ def process_file(filepath):
     longitude = None
     formatted_address = None
     maps_link = None
+    streetview_url = None
 
     if address and address.strip():
         try:
@@ -121,6 +122,14 @@ def process_file(filepath):
                 formatted_address = formatted_addr or address
                 print(formatted_address)
                 maps_link = url
+                # Generate Street View URL
+                try:
+                    streetview_url = location_services.streetview_url(lat, lng)
+                    print(f"[StreetView] ✓ Generated Street View URL")
+                except Exception as sv_error:
+                    print(
+                        f"[StreetView] ✗ Error generating Street View URL: {sv_error}"
+                    )
                 print(f"[Geocoding] ✓ Found coordinates: ({lat:.4f}, {lng:.4f})")
             else:
                 print(f"[Geocoding] ✗ No coordinates found for: {address}")
@@ -138,6 +147,7 @@ def process_file(filepath):
         "longitude": longitude,
         "formatted_address": formatted_address,
         "maps_link": maps_link,
+        "streetview_url": streetview_url,
         "system": system,
         "department": department,
         "channel": channel,
@@ -173,6 +183,7 @@ def wait_and_process(filepath):
             result.get("longitude", None),
             result.get("formatted_address", None),
             result.get("maps_link", None),
+            result.get("streetview_url", None),
         )
         if not result["transcript"] or not result["transcript"].strip():
             print(f"[Watcher] Added {result['filename']} with empty transcript")
@@ -222,6 +233,7 @@ def startup():
             item.get("longitude", None),
             item.get("formatted_address", None),
             item.get("maps_link", None),
+            item.get("streetview_url", None),
         )
         if not item["transcript"] or not str(item["transcript"]).strip():
             print(f"[Startup] Added {item['filename']} with empty transcript")
