@@ -210,7 +210,7 @@ class PoliceScannerDashboard:
                 conn.close()
 
     def get_incidents(self):
-        """Get today's incidents, excluding those with empty transcripts"""
+        """Get today's incidents - SHOW EVERYTHING IMMEDIATELY as it becomes available"""
         with db_lock:  # Thread-safe database access
             conn = self.get_connection()
             cursor = conn.cursor()
@@ -223,9 +223,10 @@ class PoliceScannerDashboard:
                            incident_type, system, department, channel,
                            time_recorded, filepath, original_filename, filename,
                            date_created, latitude, longitude,
-                           confidence, frequency, modulation, tgid, maps_link, streetview_url
+                           confidence, frequency, modulation, tgid, maps_link, streetview_url,
+                           property_owner, property_price
                     FROM audio_metadata 
-                    WHERE date_created = ? AND transcript IS NOT NULL AND transcript != ''
+                    WHERE date_created = ?
                     ORDER BY time_recorded DESC, id DESC
                 """,
                     (today,),
@@ -235,13 +236,30 @@ class PoliceScannerDashboard:
                 for row in cursor.fetchall():
                     incident = dict(row)
 
-                    # Handle transcript content
+                    # ⚡ SHOW EVERYTHING IMMEDIATELY - Display transcript as soon as available
                     transcript = incident.get("transcript", "")
-                    if not transcript or transcript in ["", "[EMPTY_TRANSCRIPT]"]:
-                        incident["content"] = "[No audio content detected]"
-                    elif transcript.startswith("[PLACEHOLDER]"):
-                        incident["content"] = "[Processing audio...]"
+
+                    # Show whatever we have - even if processing
+                    if not transcript or transcript == "":
+                        incident["content"] = "⏳ [Waiting for transcription...]"
+                    elif transcript == "[Processing...]":
+                        incident["content"] = "⏳ [Transcribing audio...]"
+                    elif transcript == "[EMPTY_TRANSCRIPT]":
+                        incident["content"] = "🔇 [No audio content detected]"
+                    elif (
+                        transcript.startswith("[Transcription")
+                        and "Failed" in transcript
+                    ):
+                        incident["content"] = f"⚠️ {transcript}"
+                    elif (
+                        transcript.startswith("[Transcription")
+                        and "Error" in transcript
+                    ):
+                        incident["content"] = f"⚠️ {transcript}"
+                    elif transcript.startswith("[File not found"):
+                        incident["content"] = f"❌ {transcript}"
                     else:
+                        # We have a real transcript - show it!
                         incident["content"] = transcript
 
                     # Handle confidence value (ensure it's properly formatted)
@@ -291,6 +309,29 @@ class PoliceScannerDashboard:
                     except (ValueError, TypeError):
                         incident["latitude"] = None
                         incident["longitude"] = None
+
+                    # Handle property information
+                    property_owner = incident.get("property_owner")
+                    property_price = incident.get("property_price")
+
+                    if property_owner:
+                        incident["property_owner"] = str(property_owner).strip()
+                    else:
+                        incident["property_owner"] = None
+
+                    if property_price:
+                        try:
+                            price_int = int(property_price) if property_price else None
+                            incident["property_price"] = price_int
+                            incident["property_price_formatted"] = (
+                                f"${price_int:,}" if price_int else None
+                            )
+                        except (ValueError, TypeError):
+                            incident["property_price"] = None
+                            incident["property_price_formatted"] = None
+                    else:
+                        incident["property_price"] = None
+                        incident["property_price_formatted"] = None
 
                     incidents.append(incident)
 
@@ -844,7 +885,7 @@ def enhanced_monitor_database():
 
     monitoring_active = True
     print(f"🔥 ENHANCED monitoring started for {dashboard.current_date}")
-    print(f"📡 Monitoring every 2 seconds with proper error handling")
+    print(f"📡 Monitoring every 0.5 seconds for INSTANT updates")
 
     last_known_id = None
     last_db_mtime = None
@@ -897,6 +938,89 @@ def enhanced_monitor_database():
                 # Update modification time
                 last_db_mtime = current_db_mtime
 
+                # ALSO check for recently updated records (progressive loading updates)
+                if db_file_changed and not id_changed:
+                    # File changed but no new IDs = existing records were updated
+                    with db_lock:
+                        cursor.execute(
+                            """
+                            SELECT id, transcript, address, formatted_address, 
+                                   incident_type, system, department, channel,
+                                   time_recorded, filepath, original_filename, filename,
+                                   date_created, latitude, longitude,
+                                   confidence, frequency, modulation, tgid, maps_link, streetview_url,
+                                   property_owner, property_price
+                            FROM audio_metadata 
+                            WHERE date_created = ? 
+                            AND id > (? - 50)
+                            AND transcript != '[Processing...]'
+                            ORDER BY id DESC
+                            LIMIT 20
+                        """,
+                            (dashboard.current_date, current_max_id),
+                        )
+
+                        updated_records = cursor.fetchall()
+
+                    if updated_records:
+                        print(
+                            f"🔄 Detected {len(updated_records)} updated records (progressive loading)"
+                        )
+                        # Process and broadcast updated records
+                        updated_incidents = []
+                        for row in updated_records:
+                            incident = dict(row)
+                            transcript = incident.get("transcript", "")
+                            if not transcript or transcript in [
+                                "",
+                                "[EMPTY_TRANSCRIPT]",
+                            ]:
+                                incident["content"] = "[No audio content detected]"
+                            elif transcript.startswith("[PLACEHOLDER]"):
+                                incident["content"] = "[Processing audio...]"
+                            else:
+                                incident["content"] = transcript
+
+                            confidence = incident.get("confidence", 0.0)
+                            try:
+                                incident["confidence"] = (
+                                    float(confidence) if confidence is not None else 0.0
+                                )
+                            except (ValueError, TypeError):
+                                incident["confidence"] = 0.0
+
+                            frequency = incident.get("frequency", "")
+                            if frequency and frequency != "":
+                                try:
+                                    freq_val = float(frequency)
+                                    incident["frequency"] = f"{freq_val:.4f} MHz"
+                                except (ValueError, TypeError):
+                                    incident["frequency"] = (
+                                        str(frequency) if frequency else "Unknown"
+                                    )
+                            else:
+                                incident["frequency"] = "Unknown"
+
+                            audio_filename = (
+                                incident.get("filename")
+                                or incident.get("original_filename")
+                                or f"incident_{incident['id']}.mp3"
+                            )
+                            incident["audio_url"] = (
+                                f"/audio/{quote(audio_filename)}?incident_id={incident['id']}"
+                            )
+                            updated_incidents.append(incident)
+
+                        if updated_incidents and connected_clients:
+                            print(
+                                f"📡 Broadcasting {len(updated_incidents)} UPDATED incidents to {connected_clients} clients"
+                            )
+                            socketio.emit(
+                                "incident_updates",
+                                {"incidents": updated_incidents},
+                                namespace="/",
+                            )
+
                 # Get new records if ID changed
                 if id_changed and current_max_id > last_known_id:
                     with db_lock:  # Thread-safe database access
@@ -906,7 +1030,8 @@ def enhanced_monitor_database():
                                    incident_type, system, department, channel,
                                    time_recorded, filepath, original_filename, filename,
                                    date_created, latitude, longitude,
-                                   confidence, frequency, modulation, tgid, maps_link, streetview_url
+                                   confidence, frequency, modulation, tgid, maps_link, streetview_url,
+                                   property_owner, property_price
                             FROM audio_metadata 
                             WHERE date_created = ? AND id > ?
                             ORDER BY id ASC
@@ -986,6 +1111,31 @@ def enhanced_monitor_database():
                                 incident["latitude"] = None
                                 incident["longitude"] = None
 
+                            # Handle property information
+                            property_owner = incident.get("property_owner")
+                            property_price = incident.get("property_price")
+
+                            if property_owner:
+                                incident["property_owner"] = str(property_owner).strip()
+                            else:
+                                incident["property_owner"] = None
+
+                            if property_price:
+                                try:
+                                    price_int = (
+                                        int(property_price) if property_price else None
+                                    )
+                                    incident["property_price"] = price_int
+                                    incident["property_price_formatted"] = (
+                                        f"${price_int:,}" if price_int else None
+                                    )
+                                except (ValueError, TypeError):
+                                    incident["property_price"] = None
+                                    incident["property_price_formatted"] = None
+                            else:
+                                incident["property_price"] = None
+                                incident["property_price_formatted"] = None
+
                             new_incidents.append(incident)
 
                         # Update last known ID
@@ -1012,18 +1162,143 @@ def enhanced_monitor_database():
                                 },
                             )
 
-                # Even if no new records, broadcast a heartbeat on file change
+                # Even if no new records, check for UPDATED records on file change
                 elif db_file_changed and connected_clients:
-                    print("💓 Database file changed - sending heartbeat")
-                    socketio.emit(
-                        "heartbeat",
-                        {
-                            "timestamp": datetime.now().isoformat(),
-                            "new_count": 0,
-                            "file_changed": True,
-                            "total_clients": len(connected_clients),
-                        },
-                    )
+                    print("💓 Database file changed - checking for updated records")
+
+                    # Query the most recent incidents (last 20 or so) to see if they were updated
+                    with db_lock:
+                        cursor.execute(
+                            """
+                            SELECT id, transcript, address, formatted_address, 
+                                   incident_type, system, department, channel,
+                                   time_recorded, filepath, original_filename, filename,
+                                   date_created, latitude, longitude,
+                                   confidence, frequency, modulation, tgid, maps_link, streetview_url,
+                                   property_owner, property_price
+                            FROM audio_metadata 
+                            WHERE date_created = ? 
+                            ORDER BY id DESC 
+                            LIMIT 20
+                        """,
+                            (dashboard.current_date,),
+                        )
+
+                        recent_records = cursor.fetchall()
+
+                    if recent_records:
+                        # Process records for broadcast (same processing as new incidents)
+                        updated_incidents = []
+                        for row in recent_records:
+                            incident = dict(row)
+
+                            # Handle transcript content
+                            transcript = incident.get("transcript", "")
+                            if not transcript or transcript in [
+                                "",
+                                "[EMPTY_TRANSCRIPT]",
+                            ]:
+                                incident["content"] = "[No audio content detected]"
+                            elif transcript.startswith("[PLACEHOLDER]"):
+                                incident["content"] = "[Processing audio...]"
+                            else:
+                                incident["content"] = transcript
+
+                            # Handle confidence value
+                            confidence = incident.get("confidence", 0.0)
+                            try:
+                                incident["confidence"] = (
+                                    float(confidence) if confidence is not None else 0.0
+                                )
+                            except (ValueError, TypeError):
+                                incident["confidence"] = 0.0
+
+                            # Handle frequency value
+                            frequency = incident.get("frequency", "")
+                            if frequency and frequency != "":
+                                try:
+                                    freq_val = float(frequency)
+                                    incident["frequency"] = f"{freq_val:.4f} MHz"
+                                except (ValueError, TypeError):
+                                    incident["frequency"] = (
+                                        str(frequency) if frequency else "Unknown"
+                                    )
+                            else:
+                                incident["frequency"] = "Unknown"
+
+                            # Handle audio filename
+                            audio_filename = (
+                                incident.get("filename")
+                                or incident.get("original_filename")
+                                or f"incident_{incident['id']}.mp3"
+                            )
+
+                            if audio_filename and incident.get("filepath"):
+                                incident["audio_filename"] = quote(audio_filename)
+                                incident["has_audio"] = True
+                            else:
+                                incident["audio_filename"] = (
+                                    f"incident_{incident['id']}.mp3"
+                                )
+                                incident["has_audio"] = False
+
+                            # Handle coordinates
+                            try:
+                                if incident.get("latitude") and incident.get(
+                                    "longitude"
+                                ):
+                                    incident["latitude"] = float(incident["latitude"])
+                                    incident["longitude"] = float(incident["longitude"])
+                                else:
+                                    incident["latitude"] = None
+                                    incident["longitude"] = None
+                            except (ValueError, TypeError):
+                                incident["latitude"] = None
+                                incident["longitude"] = None
+
+                            # Handle property information
+                            property_owner = incident.get("property_owner")
+                            property_price = incident.get("property_price")
+
+                            if property_owner:
+                                incident["property_owner"] = str(property_owner).strip()
+                            else:
+                                incident["property_owner"] = None
+
+                            if property_price:
+                                try:
+                                    price_int = (
+                                        int(property_price) if property_price else None
+                                    )
+                                    incident["property_price"] = price_int
+                                    incident["property_price_formatted"] = (
+                                        f"${price_int:,}" if price_int else None
+                                    )
+                                except (ValueError, TypeError):
+                                    incident["property_price"] = None
+                                    incident["property_price_formatted"] = None
+                            else:
+                                incident["property_price"] = None
+                                incident["property_price_formatted"] = None
+
+                            updated_incidents.append(incident)
+
+                        # Broadcast updated incidents
+                        print(
+                            f"📡 BROADCAST: {len(updated_incidents)} potentially updated records"
+                        )
+                        socketio.emit("incident_updates", updated_incidents)
+
+                        # Also send heartbeat
+                        socketio.emit(
+                            "heartbeat",
+                            {
+                                "timestamp": datetime.now().isoformat(),
+                                "updated_count": len(updated_incidents),
+                                "file_changed": True,
+                                "total_clients": len(connected_clients),
+                            },
+                        )
 
             # Close connection in finally block
             if conn:
@@ -1045,8 +1320,8 @@ def enhanced_monitor_database():
                     },
                 )
 
-            # Reduced polling frequency for stability
-            time.sleep(2.0)  # Check every 2 seconds
+            # Fast polling for instant updates
+            time.sleep(0.5)  # Check every 500ms for near-instant display
 
         except Exception as e:
             consecutive_errors += 1

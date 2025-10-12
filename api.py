@@ -97,7 +97,102 @@ def extract_address(transcript):
 
 def normalize_police_codes(transcript):
     """Normalize spaced police codes to proper format"""
-    # Pattern to match spaced numbers - handles both "4 91" and "49 1" formats
+
+    normalized_transcript = transcript
+
+    # FIRST: Handle unconventional formats at the beginning of transcript
+    # This catches patterns like "+1 97" → "497", "+2 95" → "295", "One nine five" → "195", etc.
+    # Takes last digit from first part + second number to form code
+    # Only applies to the first 60 characters to avoid false positives
+    beginning = normalized_transcript[:60].strip()
+
+    # Pattern 1: Extract last digit from ANY number + second number at beginning
+    # Matches: "+1 97", "plus 1 97", "+14 93", "234 91", etc.
+    beginning_pattern = r"^(?:\+|plus)?\s*(\d+|one|two|three|four|five|six|seven|eight|nine)\s+(\d{1,3})\b"
+    match = re.search(beginning_pattern, beginning, re.IGNORECASE)
+
+    if match:
+        first_part = match.group(1)
+        second_part = match.group(2)
+
+        # Convert written numbers to digits
+        word_to_digit = {
+            "one": "1",
+            "two": "2",
+            "three": "3",
+            "four": "4",
+            "five": "5",
+            "six": "6",
+            "seven": "7",
+            "eight": "8",
+            "nine": "9",
+            "zero": "0",
+        }
+
+        if first_part.lower() in word_to_digit:
+            first_digit = word_to_digit[first_part.lower()]
+        else:
+            first_digit = first_part[-1]  # Get last digit from ANY number
+
+        # Construct police code by combining last digit + second number
+        # Examples: "4" + "97" = "497", "2" + "95" = "295", "1" + "95" = "195"
+        potential_code = first_digit + second_part
+
+        # Accept if it's a valid police/unit code (49x, 50x, or other 3-digit codes like 195, 112, etc.)
+        if potential_code in [
+            "491",
+            "492",
+            "493",
+            "494",
+            "495",
+            "496",
+            "497",
+            "498",
+            "499",
+            "500",
+            "501",
+            "502",
+            "503",
+            "504",
+        ] or (len(potential_code) == 3 and potential_code.isdigit()):
+            # Replace the matched pattern with the normalized code
+            normalized_transcript = (
+                normalized_transcript[: match.start()]
+                + potential_code
+                + normalized_transcript[match.end() :]
+            )
+
+    # Pattern 2: Handle fully written out three-digit codes at the beginning
+    # Matches: "One nine five", "Four nine seven", etc.
+    written_three_digit = r"^(?:one|two|three|four|five|six|seven|eight|nine|zero)\s+(?:one|two|three|four|five|six|seven|eight|nine|zero)\s+(?:one|two|three|four|five|six|seven|eight|nine|zero)\b"
+    match_written = re.search(
+        written_three_digit, normalized_transcript[:60].strip(), re.IGNORECASE
+    )
+
+    if match_written:
+        word_to_digit = {
+            "one": "1",
+            "two": "2",
+            "three": "3",
+            "four": "4",
+            "five": "5",
+            "six": "6",
+            "seven": "7",
+            "eight": "8",
+            "nine": "9",
+            "zero": "0",
+        }
+        words = match_written.group(0).lower().split()
+        if len(words) == 3:
+            code = "".join(word_to_digit.get(w, "") for w in words)
+            if code and len(code) == 3:
+                normalized_transcript = (
+                    normalized_transcript[: match_written.start()]
+                    + code
+                    + normalized_transcript[match_written.end() :]
+                )
+
+    # Standard patterns - handles both "4 91" and "49 1" formats
     patterns = [
         # Handle "4 9X" patterns (like "4 91", "4 92", etc.)
         (r"\b4\s+9\s*1\b", "491"),
@@ -158,7 +253,6 @@ def normalize_police_codes(transcript):
         (r"\b4\s+nine\s+(\d)\b", r"49\1"),
     ]
 
-    normalized_transcript = transcript
     for pattern, replacement in patterns:
         normalized_transcript = re.sub(
             pattern, replacement, normalized_transcript, flags=re.IGNORECASE

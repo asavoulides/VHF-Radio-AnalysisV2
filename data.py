@@ -64,6 +64,8 @@ class AudioMetadata:
             ("latitude", "REAL"),
             ("longitude", "REAL"),
             ("streetview_url", "TEXT"),
+            ("property_owner", "TEXT"),
+            ("property_price", "INTEGER"),
         ]:
             try:
                 cursor.execute(f"ALTER TABLE audio_metadata ADD COLUMN {col} {decl}")
@@ -216,9 +218,12 @@ class AudioMetadata:
         formatted_address=None,
         maps_link=None,
         streetview_url=None,
+        property_owner=None,
+        property_price=None,
     ):
         """Insert once per filepath. If row exists, do nothing.
-        A NULL/empty transcript still counts as 'processed'."""
+        A NULL/empty transcript still counts as 'processed'.
+        Returns the incident ID."""
         # Compute date first, before touching the DB
         date_created = self._extract_date_from_filepath(filepath)
         if not date_created:
@@ -226,6 +231,7 @@ class AudioMetadata:
             date_created = f"{today.month}-{today.day}-{today.year}"
 
         conn = None
+        incident_id = None
         try:
             # Open connection first, then create cursor
             conn = sqlite3.connect(self.db_path, timeout=30)
@@ -239,8 +245,8 @@ class AudioMetadata:
                     (filename, time_recorded, transcript, confidence, incident_type,
                      address, formatted_address, maps_link, system, department, channel,
                      modulation, frequency, tgid, filepath, date_created, original_filename,
-                     latitude, longitude, streetview_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     latitude, longitude, streetview_url, property_owner, property_price)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(filepath) DO NOTHING
                 """,
                 (
@@ -264,15 +270,143 @@ class AudioMetadata:
                     latitude,
                     longitude,
                     streetview_url,
+                    property_owner,
+                    property_price,
                 ),
             )
             conn.commit()
             if cursor.rowcount == 0:
                 print(f"[Database] Skipped insert (already exists): {filename}")
+                # Get existing ID
+                cursor.execute(
+                    "SELECT id FROM audio_metadata WHERE filepath = ?", (filepath,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    incident_id = row[0]
             else:
-                print(f"[Database] Inserted metadata for {filename} on {date_created}")
+                incident_id = cursor.lastrowid
+                print(
+                    f"[Database] ✓ Inserted metadata for {filename} on {date_created} (ID: {incident_id})"
+                )
         except sqlite3.Error as e:
             print(f"SQLite error in add_metadata for {filename}: {e}")
+        finally:
+            if conn is not None:
+                conn.close()
+
+        return incident_id
+
+    def update_transcript(self, incident_id, transcript, confidence, address):
+        """Update transcript, confidence, and address for an existing incident"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=30)
+            conn.execute("PRAGMA journal_mode=WAL;")
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "UPDATE audio_metadata SET transcript = ?, confidence = ?, address = ? WHERE id = ?",
+                (transcript, confidence, address, incident_id),
+            )
+            conn.commit()
+            print(
+                f"[Database] ✓ Updated incident {incident_id} transcript (confidence: {confidence:.2%})"
+            )
+        except sqlite3.Error as e:
+            print(f"SQLite error updating transcript for {incident_id}: {e}")
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def update_incident_type(self, incident_id, incident_type):
+        """Update incident type for an existing incident"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=30)
+            conn.execute("PRAGMA journal_mode=WAL;")
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "UPDATE audio_metadata SET incident_type = ? WHERE id = ?",
+                (incident_type, incident_id),
+            )
+            conn.commit()
+            print(
+                f"[Database] ✓ Updated incident {incident_id} type to: {incident_type}"
+            )
+        except sqlite3.Error as e:
+            print(f"SQLite error updating incident type for {incident_id}: {e}")
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def update_location_info(
+        self, incident_id, latitude, longitude, formatted_address, maps_link
+    ):
+        """Update location information for an existing incident"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=30)
+            conn.execute("PRAGMA journal_mode=WAL;")
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """UPDATE audio_metadata 
+                   SET latitude = ?, longitude = ?, formatted_address = ?, maps_link = ? 
+                   WHERE id = ?""",
+                (latitude, longitude, formatted_address, maps_link, incident_id),
+            )
+            conn.commit()
+            print(
+                f"[Database] ✓ Updated incident {incident_id} location: {formatted_address}"
+            )
+        except sqlite3.Error as e:
+            print(f"SQLite error updating location for {incident_id}: {e}")
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def update_streetview(self, incident_id, streetview_url):
+        """Update street view URL for an existing incident"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=30)
+            conn.execute("PRAGMA journal_mode=WAL;")
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "UPDATE audio_metadata SET streetview_url = ? WHERE id = ?",
+                (streetview_url, incident_id),
+            )
+            conn.commit()
+            print(f"[Database] ✓ Updated incident {incident_id} with Street View")
+        except sqlite3.Error as e:
+            print(f"SQLite error updating streetview for {incident_id}: {e}")
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def update_property_info(self, incident_id, property_owner, property_price):
+        """Update property information for an existing incident"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=30)
+            conn.execute("PRAGMA journal_mode=WAL;")
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "UPDATE audio_metadata SET property_owner = ?, property_price = ? WHERE id = ?",
+                (property_owner, property_price, incident_id),
+            )
+            conn.commit()
+            owner_str = f"Owner: {property_owner}" if property_owner else ""
+            price_str = f", Price: ${property_price:,}" if property_price else ""
+            print(
+                f"[Database] ✓ Updated incident {incident_id} property info: {owner_str}{price_str}"
+            )
+        except sqlite3.Error as e:
+            print(f"SQLite error updating property info for {incident_id}: {e}")
         finally:
             if conn is not None:
                 conn.close()

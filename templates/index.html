@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Police Scanner Command Center - Live Intelligence Dashboard</title>
+    <!-- Version: 2.0 - Analytics Feature Added - October 8, 2025 -->
 
     <!-- External Libraries -->
     <link
@@ -350,6 +357,7 @@
       .feed-content {
         flex: 1;
         overflow-y: auto;
+        overflow-x: hidden;
         padding-right: 0.5rem;
       }
 
@@ -405,9 +413,13 @@
         border-radius: 12px;
         padding: 1.25rem;
         margin-bottom: 1rem;
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
         transition: all 0.3s ease;
         cursor: pointer;
         backdrop-filter: blur(10px);
+        transform-origin: center center;
+        position: relative;
       }
 
       .incident-card:hover {
@@ -724,6 +736,26 @@
         color: var(--white);
       }
 
+      .action-btn.analytics-btn {
+        background: linear-gradient(
+          135deg,
+          rgba(59, 130, 246, 0.2),
+          rgba(147, 51, 234, 0.2)
+        );
+        border-color: rgba(59, 130, 246, 0.4);
+      }
+
+      .action-btn.analytics-btn:hover {
+        background: linear-gradient(
+          135deg,
+          rgba(59, 130, 246, 0.3),
+          rgba(147, 51, 234, 0.3)
+        );
+        border-color: var(--accent-blue);
+        color: var(--accent-blue);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+      }
+
       .confidence-meter {
         display: flex;
         align-items: center;
@@ -853,10 +885,881 @@
       .leaflet-popup-tip {
         background: var(--dark-800);
       }
+
+      /* Color Mode Dropdown Styling */
+      #colorMode {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="5"><path fill="%23e5e7eb" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        padding-right: 28px;
+      }
+
+      #colorMode option {
+        background: #1f2937 !important;
+        color: #e5e7eb !important;
+        padding: 4px 8px;
+      }
+
+      #colorMode:hover {
+        background-color: #374151;
+      }
+
+      #colorMode:focus {
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+      }
+
+      /* Callsign Button Styles */
+      .callsign-btn {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        color: var(--white);
+        padding: 0.6rem 1.25rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: var(--glass-shadow);
+      }
+
+      .callsign-btn:hover {
+        border-color: var(--accent-blue);
+        background: rgba(59, 130, 246, 0.1);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+      }
+
+      /* Callsign Modal Styles */
+      .callsign-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(10px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+
+      .callsign-modal.active {
+        display: flex;
+      }
+
+      .callsign-modal-content {
+        background: var(--dark-800);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        max-width: 900px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        animation: modalSlideIn 0.3s ease-out;
+      }
+
+      @keyframes modalSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-50px) scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+        }
+        50% {
+          box-shadow: 0 0 20px 10px rgba(59, 130, 246, 0.3);
+        }
+      }
+
+      .callsign-modal-header {
+        padding: 2rem;
+        border-bottom: 1px solid var(--glass-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border-radius: 20px 20px 0 0;
+      }
+
+      .callsign-modal-header h2 {
+        color: var(--white);
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .callsign-modal-close {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        color: var(--white);
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1.25rem;
+      }
+
+      .callsign-modal-close:hover {
+        background: var(--accent-red);
+        border-color: var(--accent-red);
+        transform: rotate(90deg);
+      }
+
+      .callsign-modal-body {
+        padding: 2rem;
+      }
+
+      .callsign-category {
+        margin-bottom: 2rem;
+      }
+
+      .callsign-category:last-child {
+        margin-bottom: 0;
+      }
+
+      .callsign-category-title {
+        color: var(--accent-blue);
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--accent-blue);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .callsign-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .callsign-item {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.3s ease;
+      }
+
+      .callsign-item:hover {
+        border-color: var(--accent-blue);
+        background: rgba(59, 130, 246, 0.05);
+        transform: translateX(4px);
+      }
+
+      .callsign-number {
+        background: var(--accent-blue);
+        color: var(--white);
+        padding: 0.35rem 0.7rem;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        min-width: 80px;
+        text-align: center;
+      }
+
+      .callsign-description {
+        color: var(--light-300);
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+
+      /* Scrollbar Styles for Modal */
+      .callsign-modal-content::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .callsign-modal-content::-webkit-scrollbar-track {
+        background: var(--dark-900);
+        border-radius: 4px;
+      }
+
+      .callsign-modal-content::-webkit-scrollbar-thumb {
+        background: var(--accent-blue);
+        border-radius: 4px;
+      }
+
+      .callsign-modal-content::-webkit-scrollbar-thumb:hover {
+        background: var(--accent-cyan);
+      }
+
+      /* Callsign Tooltip Styles */
+      .callsign-tooltip {
+        position: relative;
+        color: var(--accent-blue);
+        font-weight: 600;
+        cursor: pointer;
+        border-bottom: 2px dotted var(--accent-blue);
+        padding: 0 2px;
+        transition: all 0.2s ease;
+      }
+
+      .callsign-tooltip:hover {
+        color: var(--accent-cyan);
+        border-bottom-color: var(--accent-cyan);
+        transform: scale(1.05);
+      }
+
+      .callsign-tooltip:active {
+        transform: scale(0.95);
+      }
+
+      .callsign-tooltip-content {
+        visibility: hidden;
+        position: absolute;
+        bottom: 125%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--dark-900);
+        color: var(--white);
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+        z-index: 1000;
+        border: 1px solid var(--accent-blue);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        transition: all 0.2s ease;
+        pointer-events: none;
+      }
+
+      /* Analytics Modal Styles */
+      .analytics-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(12px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      .analytics-modal.active {
+        display: flex;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .analytics-modal-content {
+        background: linear-gradient(
+          135deg,
+          var(--dark-800) 0%,
+          var(--dark-900) 100%
+        );
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 24px;
+        max-width: 1000px;
+        width: 100%;
+        max-height: 85vh;
+        overflow: hidden;
+        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.7),
+          0 0 60px rgba(59, 130, 246, 0.15);
+        animation: modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+      }
+
+      @keyframes modalSlideUp {
+        from {
+          opacity: 0;
+          transform: translateY(40px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .analytics-modal-header {
+        padding: 2rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(
+          135deg,
+          rgba(59, 130, 246, 0.1),
+          rgba(147, 51, 234, 0.1)
+        );
+        backdrop-filter: blur(20px);
+        border-radius: 24px 24px 0 0;
+        flex-shrink: 0;
+      }
+
+      .analytics-modal-title {
+        color: var(--white);
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .analytics-modal-title i {
+        background: linear-gradient(135deg, var(--accent-blue), #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 2rem;
+      }
+
+      .analytics-modal-close {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--white);
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1.25rem;
+      }
+
+      .analytics-modal-close:hover {
+        background: var(--accent-red);
+        border-color: var(--accent-red);
+        transform: rotate(90deg);
+        box-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+      }
+
+      .analytics-modal-body {
+        padding: 2rem;
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .analytics-modal-body::-webkit-scrollbar {
+        width: 10px;
+      }
+
+      .analytics-modal-body::-webkit-scrollbar-track {
+        background: var(--dark-900);
+        border-radius: 5px;
+      }
+
+      .analytics-modal-body::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, var(--accent-blue), #8b5cf6);
+        border-radius: 5px;
+      }
+
+      .analytics-modal-body::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+      }
+
+      .analytics-section {
+        margin-bottom: 2rem;
+      }
+
+      .analytics-section:last-child {
+        margin-bottom: 0;
+      }
+
+      .analytics-section-title {
+        color: var(--accent-blue);
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .analytics-section-title i {
+        background: linear-gradient(135deg, var(--accent-blue), #06b6d4);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .analytics-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 1rem;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+      }
+
+      .analytics-card:hover {
+        border-color: rgba(59, 130, 246, 0.4);
+        background: rgba(59, 130, 246, 0.05);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
+      }
+
+      .analytics-card-label {
+        color: var(--light-400);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .analytics-card-label i {
+        color: var(--accent-blue);
+        font-size: 0.85rem;
+      }
+
+      .analytics-card-value {
+        color: var(--white);
+        font-size: 1rem;
+        font-weight: 600;
+        word-break: break-word;
+      }
+
+      .analytics-card-value.large {
+        font-size: 1.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--accent-blue), #06b6d4);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .analytics-transcript {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 1.25rem;
+        border-radius: 12px;
+        color: var(--light-200);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        font-style: italic;
+        border-left: 4px solid var(--accent-blue);
+      }
+
+      .analytics-badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border: 1px solid;
+      }
+
+      .analytics-badge.success {
+        background: rgba(22, 163, 74, 0.15);
+        color: var(--accent-green);
+        border-color: var(--accent-green);
+      }
+
+      .analytics-badge.warning {
+        background: rgba(217, 119, 6, 0.15);
+        color: var(--accent-amber);
+        border-color: var(--accent-amber);
+      }
+
+      .analytics-badge.error {
+        background: rgba(220, 38, 38, 0.15);
+        color: var(--accent-red);
+        border-color: var(--accent-red);
+      }
+
+      .analytics-badge.info {
+        background: rgba(59, 130, 246, 0.15);
+        color: var(--accent-blue);
+        border-color: var(--accent-blue);
+      }
+
+      .analytics-processing-timeline {
+        position: relative;
+        padding-left: 2rem;
+      }
+
+      .analytics-processing-timeline::before {
+        content: "";
+        position: absolute;
+        left: 0.5rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: linear-gradient(
+          180deg,
+          var(--accent-blue),
+          rgba(59, 130, 246, 0.2)
+        );
+      }
+
+      .analytics-timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+      }
+
+      .analytics-timeline-item:last-child {
+        padding-bottom: 0;
+      }
+
+      .analytics-timeline-item::before {
+        content: "";
+        position: absolute;
+        left: -1.5rem;
+        top: 0.25rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--accent-blue);
+        border: 2px solid var(--dark-800);
+        box-shadow: 0 0 12px var(--accent-blue);
+      }
+
+      .analytics-timeline-title {
+        color: var(--white);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .analytics-timeline-desc {
+        color: var(--light-400);
+        font-size: 0.875rem;
+      }
+
+      .analytics-link {
+        color: var(--accent-blue);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: all 0.2s ease;
+      }
+
+      .analytics-link:hover {
+        color: #06b6d4;
+        text-decoration: underline;
+      }
+
+      .callsign-tooltip:hover .callsign-tooltip-content {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      .callsign-tooltip-content::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: var(--accent-blue);
+      }
+
+      .callsign-tooltip-content .tooltip-hint {
+        display: block;
+        font-size: 0.65rem;
+        color: var(--light-400);
+        margin-top: 0.25rem;
+        font-style: italic;
+      }
+
+      .callsign-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid var(--accent-blue);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: var(--accent-blue);
+        font-weight: 600;
+        font-size: 0.85em;
+      }
+
+      /* ===== STUNNING PAGE LOADER ===== */
+      .page-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          135deg,
+          #0f172a 0%,
+          #1e293b 50%,
+          #0f172a 100%
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 1;
+        transition: opacity 0.5s ease-out;
+        overflow: hidden;
+      }
+
+      .page-loader::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(
+          circle,
+          rgba(59, 130, 246, 0.15) 0%,
+          transparent 70%
+        );
+        animation: loaderPulse 3s ease-in-out infinite;
+      }
+
+      .page-loader.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .loader-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        animation: loaderFadeIn 0.8s ease-out;
+      }
+
+      .loader-spinner {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto 2rem;
+      }
+
+      .spinner-ring {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 3px solid transparent;
+        border-radius: 50%;
+        animation: spinRotate 2s linear infinite;
+      }
+
+      .spinner-ring:nth-child(1) {
+        border-top-color: var(--accent-blue);
+        animation-duration: 2s;
+      }
+
+      .spinner-ring:nth-child(2) {
+        border-right-color: #06b6d4;
+        animation-duration: 3s;
+        animation-direction: reverse;
+        width: 80%;
+        height: 80%;
+        top: 10%;
+        left: 10%;
+      }
+
+      .spinner-ring:nth-child(3) {
+        border-bottom-color: #8b5cf6;
+        animation-duration: 4s;
+        width: 60%;
+        height: 60%;
+        top: 20%;
+        left: 20%;
+      }
+
+      .spinner-icon {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2.5rem;
+        color: var(--accent-blue);
+        animation: iconPulse 2s ease-in-out infinite;
+      }
+
+      .loader-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.5px;
+        background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .loader-subtitle {
+        font-size: 1rem;
+        color: var(--light-400);
+        margin-bottom: 2rem;
+        animation: subtitleFade 2s ease-in-out infinite;
+      }
+
+      .loader-progress {
+        width: 300px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 0 auto;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+      }
+
+      .loader-progress-bar {
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          #3b82f6 0%,
+          #06b6d4 50%,
+          #8b5cf6 100%
+        );
+        background-size: 200% 100%;
+        border-radius: 10px;
+        animation: progressSlide 2s ease-in-out infinite;
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+      }
+
+      @keyframes spinRotate {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes iconPulse {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.1);
+          opacity: 0.8;
+        }
+      }
+
+      @keyframes loaderPulse {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 0.3;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.2);
+          opacity: 0.5;
+        }
+      }
+
+      @keyframes loaderFadeIn {
+        0% {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes subtitleFade {
+        0%,
+        100% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      @keyframes progressSlide {
+        0% {
+          background-position: 0% 0%;
+          width: 0%;
+        }
+        50% {
+          background-position: 100% 0%;
+          width: 70%;
+        }
+        100% {
+          background-position: 200% 0%;
+          width: 100%;
+        }
+      }
     </style>
   </head>
 
   <body>
+    <!-- Beautiful Loading Screen -->
+    <div id="pageLoader" class="page-loader">
+      <div class="loader-content">
+        <div class="loader-spinner">
+          <div class="spinner-ring"></div>
+          <div class="spinner-ring"></div>
+          <div class="spinner-ring"></div>
+          <div class="spinner-icon">
+            <i class="fas fa-satellite-dish"></i>
+          </div>
+        </div>
+        <h2 class="loader-title">Police Scanner Intelligence Center</h2>
+        <p class="loader-subtitle">Initializing live feed...</p>
+        <div class="loader-progress">
+          <div class="loader-progress-bar"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Header -->
     <header class="main-header">
       <div class="container-fluid px-4">
@@ -869,7 +1772,15 @@
             </h1>
           </div>
           <div class="col-md-6 text-end">
-            <div id="connectionStatus" class="connection-status connected">
+            <button class="callsign-btn" onclick="openCallsignModal()">
+              <i class="fas fa-id-badge"></i>
+              Call Signs
+            </button>
+            <div
+              id="connectionStatus"
+              class="connection-status connected"
+              style="display: inline-flex; margin-left: 1rem"
+            >
               <i class="fas fa-satellite-dish"></i>
               Connected
             </div>
@@ -907,7 +1818,14 @@
             <!-- Live Incident Feed -->
             <div class="incident-feed">
               <div class="feed-header">
-                <h3 class="feed-title">
+                <h3
+                  class="feed-title"
+                  style="
+                    width: 100%;
+                    text-align: center;
+                    justify-content: center;
+                  "
+                >
                   <i class="fas fa-broadcast-tower"></i>
                   Live Incident Feed
                 </h3>
@@ -927,13 +1845,25 @@
                 </div>
                 <div class="filter-content" id="addressFilterContent">
                   <div class="filter-options">
-                    <button class="filter-btn active" data-address-filter="all" id="allAddressFilter">
+                    <button
+                      class="filter-btn active"
+                      data-address-filter="all"
+                      id="allAddressFilter"
+                    >
                       All Locations (<span id="totalAddressCount">0</span>)
                     </button>
-                    <button class="filter-btn" data-address-filter="with-address" id="withAddressFilter">
+                    <button
+                      class="filter-btn"
+                      data-address-filter="with-address"
+                      id="withAddressFilter"
+                    >
                       With Address (<span id="withAddressCount">0</span>)
                     </button>
-                    <button class="filter-btn" data-address-filter="no-address" id="noAddressFilter">
+                    <button
+                      class="filter-btn"
+                      data-address-filter="no-address"
+                      id="noAddressFilter"
+                    >
                       No Address (<span id="noAddressCount">0</span>)
                     </button>
                   </div>
@@ -977,12 +1907,71 @@
                 <i class="fas fa-map-marked-alt"></i>
                 Real-Time Incident Map
               </h3>
-              <div class="map-counter" id="mapCounter">0 incidents plotted</div>
+              <div
+                class="map-counter"
+                id="mapCounter"
+                style="text-align: center"
+              >
+                0 incidents plotted
+              </div>
+
+              <!-- Color Coding Mode Selector -->
+              <div
+                style="
+                  margin-top: 8px;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  font-size: 0.875rem;
+                "
+              >
+                <label style="color: var(--light-300); font-weight: 500"
+                  >Color Mode:</label
+                >
+                <select
+                  id="colorMode"
+                  onchange="changeColorMode()"
+                  style="
+                    background: #1f2937;
+                    border: 1px solid #374151;
+                    color: #e5e7eb;
+                    padding: 6px 10px;
+                    border-radius: 6px;
+                    font-size: 0.875rem;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                  "
+                  onmouseover="this.style.borderColor='#60a5fa'"
+                  onmouseout="this.style.borderColor='#374151'"
+                  onfocus="this.style.borderColor='#3b82f6'; this.style.outline='none'"
+                  onblur="this.style.borderColor='#374151'"
+                >
+                  <option
+                    value="incident-type"
+                    style="background: #1f2937; color: #e5e7eb"
+                  >
+                    By Incident Type
+                  </option>
+                  <option
+                    value="severity"
+                    style="background: #1f2937; color: #e5e7eb"
+                  >
+                    By Severity Level
+                  </option>
+                  <option
+                    value="time-elapsed"
+                    style="background: #1f2937; color: #e5e7eb"
+                  >
+                    By Time Elapsed
+                  </option>
+                </select>
+              </div>
             </div>
             <div id="incidentMap"></div>
 
-            <!-- Professional Legend -->
+            <!-- Dynamic Legend -->
             <div
+              id="mapLegend"
               style="
                 margin-top: 12px;
                 padding: 12px;
@@ -999,9 +1988,10 @@
                   color: #e2e8f0;
                 "
               >
-                📍 Incident Categories
+                <span id="legend-title">📍 Incident Categories</span>
               </div>
               <div
+                id="legend-content"
                 style="
                   display: flex;
                   align-items: center;
@@ -1011,150 +2001,7 @@
                   line-height: 1.2;
                 "
               >
-                <!-- Medical Emergency -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #dc2626;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Medical Emergency</span>
-                </div>
-                <!-- Fire Emergency -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #ea580c;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Fire Emergency</span>
-                </div>
-                <!-- Motor Vehicle Accident -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #dc2626;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Vehicle Accident</span>
-                </div>
-                <!-- Police Operations -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #2563eb;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Police Operation</span>
-                </div>
-                <!-- Suspicious Activity -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #7c3aed;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Suspicious Activity</span>
-                </div>
-                <!-- Traffic Violation -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #d97706;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Traffic Violation</span>
-                </div>
-                <!-- Domestic Disturbance -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #dc2626;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Domestic Issue</span>
-                </div>
-                <!-- Alarm Activation -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #d97706;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Alarm</span>
-                </div>
-                <!-- Theft/Burglary -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #7c2d12;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Theft/Burglary</span>
-                </div>
-                <!-- Welfare Check -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #0891b2;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Welfare Check</span>
-                </div>
-                <!-- Found Property -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #16a34a;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Found Property</span>
-                </div>
-                <!-- Unknown -->
-                <div style="display: flex; align-items: center; gap: 3px">
-                  <div
-                    style="
-                      width: 10px;
-                      height: 10px;
-                      border-radius: 50%;
-                      background: #64748b;
-                    "
-                  ></div>
-                  <span style="color: #cbd5e1">Unknown</span>
-                </div>
+                <!-- Dynamic legend content will be populated by updateMapLegend() -->
               </div>
             </div>
           </div>
@@ -1187,34 +2034,52 @@
       // Global variables
       let socket;
       let incidentMap;
-      let incidentMarkers = [];
       let mapCounter = 0;
       let currentAudio = null;
       let audioPlayer = null;
       let currentFilter = "all";
       let allIncidents = [];
       let incidentTypeCounts = {};
-      let currentAddressFilter = 'all';
+      let currentAddressFilter = "all";
 
       // Address filter function - defined early to ensure availability
       function passesAddressFilter(incident) {
-        if (currentAddressFilter === 'all') {
+        if (currentAddressFilter === "all") {
           return true;
         }
 
-        const hasValidAddress = incident.formatted_address && 
-                              incident.formatted_address !== 'Unknown' && 
-                              incident.formatted_address.trim() !== '' &&
-                              incident.formatted_address !== 'Newton, MA, USA';
+        const hasValidAddress =
+          incident.formatted_address &&
+          incident.formatted_address !== "Unknown" &&
+          incident.formatted_address.trim() !== "" &&
+          incident.formatted_address !== "Newton, MA, USA";
 
-        if (currentAddressFilter === 'with-address') {
+        if (currentAddressFilter === "with-address") {
           return hasValidAddress;
-        } else if (currentAddressFilter === 'no-address') {
+        } else if (currentAddressFilter === "no-address") {
           return !hasValidAddress;
         }
 
         return true;
       }
+
+      // Hide loading screen when page is ready
+      function hideLoader() {
+        const loader = document.getElementById("pageLoader");
+        if (loader) {
+          setTimeout(() => {
+            loader.classList.add("fade-out");
+            setTimeout(() => {
+              loader.style.display = "none";
+            }, 500);
+          }, 800); // Show loader for at least 800ms for smooth experience
+        }
+      }
+
+      // Fallback: Hide loader after max 5 seconds
+      window.addEventListener("load", function () {
+        setTimeout(hideLoader, 100);
+      });
 
       // Initialize application
       document.addEventListener("DOMContentLoaded", function () {
@@ -1223,9 +2088,13 @@
         initializeAudioPlayer();
         initializeFilters();
         loadInitialData();
+        updateMapLegend(); // Initialize legend with default color mode
 
         // Update connection status every 30 seconds
         setInterval(checkConnection, 30000);
+
+        // Hide loader after everything is initialized
+        hideLoader();
       });
 
       // Socket.IO Connection with proper configuration
@@ -1285,9 +2154,16 @@
         socket.on("initial_data", function (data) {
           // Store current address filter state to preserve it
           const savedAddressFilter = currentAddressFilter;
-          
+
           // Process received data
           allIncidents = data.incidents || [];
+          // Store globally for color mode switching
+          window.allIncidents = allIncidents;
+          console.log(
+            "Loaded",
+            allIncidents.length,
+            "incidents into window.allIncidents"
+          );
 
           // Update address filter counters
           setTimeout(updateAddressCounters, 100);
@@ -1321,28 +2197,36 @@
 
           updateMapCounter();
           updateFeedCounter(getVisibleIncidentCount());
-          
+
           // Store current address filter state to preserve it
           const savedInitialAddressFilter = currentAddressFilter;
-          
+
           loadIncidentTypes();
-          
+
           // Restore address filter state after a short delay
           setTimeout(() => {
-            if (savedInitialAddressFilter && savedInitialAddressFilter !== 'all') {
+            if (
+              savedInitialAddressFilter &&
+              savedInitialAddressFilter !== "all"
+            ) {
               currentAddressFilter = savedInitialAddressFilter;
               // Re-activate the correct button
-              const addressFilterButtons = document.querySelectorAll('.address-filter-btn');
-              addressFilterButtons.forEach(btn => btn.classList.remove('active'));
-              const targetBtn = document.querySelector(`[data-address-filter="${savedInitialAddressFilter}"]`);
+              const addressFilterButtons = document.querySelectorAll(
+                ".address-filter-btn"
+              );
+              addressFilterButtons.forEach((btn) =>
+                btn.classList.remove("active")
+              );
+              const targetBtn = document.querySelector(
+                `[data-address-filter="${savedInitialAddressFilter}"]`
+              );
               if (targetBtn) {
-                targetBtn.classList.add('active');
+                targetBtn.classList.add("active");
               }
               updateAddressCounters();
               filterByType(currentFilter);
             }
           }, 200);
-
         });
 
         socket.on("new_incidents", function (data) {
@@ -1354,6 +2238,10 @@
             if (!processedIncidents.has(incident.id)) {
               // Add to allIncidents array
               allIncidents.push(incident);
+              // Also update global array for color mode switching
+              if (window.allIncidents) {
+                window.allIncidents.push(incident);
+              }
 
               if (shouldShowIncident(incident)) {
                 addIncidentToFeed(incident, true);
@@ -1367,12 +2255,15 @@
           updateFeedCounter(getVisibleIncidentCount());
           // Store current address filter state
           const savedNewIncidentsAddressFilter = currentAddressFilter;
-          
+
           loadIncidentTypes();
-          
+
           // Restore address filter state
           setTimeout(() => {
-            if (savedNewIncidentsAddressFilter && savedNewIncidentsAddressFilter !== currentAddressFilter) {
+            if (
+              savedNewIncidentsAddressFilter &&
+              savedNewIncidentsAddressFilter !== currentAddressFilter
+            ) {
               currentAddressFilter = savedNewIncidentsAddressFilter;
               updateAddressCounters();
               filterByType(currentFilter);
@@ -1382,6 +2273,65 @@
           // Show notification for new incidents (only for multiple incidents)
           if (data.length > 1) {
             showNotification(`🆕 ${data.length} new incidents received!`);
+          }
+        });
+
+        // NEW: Handle incident updates (when background processing completes)
+        socket.on("incident_updates", function (data) {
+          console.log(`🔄 Received ${data.length} incident updates`);
+
+          let updatedCount = 0;
+          data.forEach((incident) => {
+            // Find existing incident in allIncidents array
+            const index = allIncidents.findIndex((i) => i.id === incident.id);
+            if (index !== -1) {
+              // Update the incident data in our array
+              allIncidents[index] = incident;
+
+              // Update the DOM card if it exists
+              const card = document.querySelector(
+                `[data-incident-id="${incident.id}"]`
+              );
+              if (card) {
+                // Find the parent incident card
+                const incidentCard = card.closest(".incident-card");
+                if (incidentCard) {
+                  // Get current scroll position to restore after update
+                  const scrollY = window.scrollY;
+
+                  // Create a new card HTML
+                  const newCardHTML = createIncidentCard(incident);
+                  const tempDiv = document.createElement("div");
+                  tempDiv.innerHTML = newCardHTML;
+                  const newCard = tempDiv.firstElementChild;
+
+                  // Replace old card with new card (preserves position in feed)
+                  incidentCard.replaceWith(newCard);
+
+                  // Restore scroll position
+                  window.scrollTo(0, scrollY);
+
+                  // Add subtle flash effect to show update
+                  newCard.style.animation = "pulse 0.5s ease-in-out";
+                  setTimeout(() => {
+                    newCard.style.animation = "";
+                  }, 500);
+
+                  updatedCount++;
+                }
+              }
+
+              // Update map marker if it exists
+              if (incident.latitude && incident.longitude) {
+                updateIncidentMarker(incident);
+              }
+            }
+          });
+
+          if (updatedCount > 0) {
+            console.log(`✅ Updated ${updatedCount} incident cards in the DOM`);
+            // Optional: Show subtle notification
+            // showNotification(`🔄 ${updatedCount} incident(s) updated with new information`);
           }
         });
 
@@ -1524,22 +2474,18 @@
         initializeAddressFilter();
 
         // NOTE: loadIncidentTypes() is called AFTER incidents are loaded in initial_data event
-
       }
 
       // Load incident types and their counts
       function loadIncidentTypes() {
-
         fetch("/api/incident_types")
           .then((response) => response.json())
           .then((data) => {
-
             updateFilterOptions(data);
             incidentTypeCounts = {};
             data.incident_types.forEach((item) => {
               incidentTypeCounts[item.type] = item.count;
             });
-
           })
           .catch((error) => {
             console.error("Error loading incident types:", error);
@@ -1548,7 +2494,6 @@
 
       // Update filter options with incident types
       function updateFilterOptions(data) {
-
         const filterOptions = document.getElementById("filterOptions");
         const totalCount = document.getElementById("totalCount");
 
@@ -1567,8 +2512,6 @@
 
         existingButtons.forEach((btn) => btn.remove());
 
-
-
         // Add incident type buttons
         data.incident_types.forEach((item) => {
           const button = document.createElement("button");
@@ -1585,7 +2528,6 @@
           }
 
           filterOptions.appendChild(button);
-
         });
 
         // Only add "All" button event listener if it doesn't already have one
@@ -1596,18 +2538,11 @@
           });
           allButton.setAttribute("data-listener-added", "true");
         } else if (allButton) {
-
         }
-
       }
 
       // Filter incidents by type
       function filterByType(type) {
-
-
-
-
-
         currentFilter = type;
 
         // Update active button
@@ -1632,8 +2567,10 @@
         }
 
         // Apply address filter
-        if (currentAddressFilter !== 'all') {
-          filtered = filtered.filter(incident => passesAddressFilter(incident));
+        if (currentAddressFilter !== "all") {
+          filtered = filtered.filter((incident) =>
+            passesAddressFilter(incident)
+          );
         }
 
         displayFilteredIncidents(filtered);
@@ -1683,6 +2620,10 @@
         // Calculate confidence percentage
         const confidencePercent = Math.round((incident.confidence || 0) * 100);
 
+        // Simple transcript display - NO ANIMATIONS, NO ENHANCEMENTS
+        const displayTranscript =
+          incident.content || incident.transcript || "Processing transcript...";
+
         incidentEl.innerHTML = `
           <div class="incident-header">
             <span class="incident-type-badge ${typeClass}">
@@ -1692,25 +2633,128 @@
           </div>
 
           <div class="incident-transcript">
-            "${incident.transcript}"
+            ${displayTranscript}
           </div>
 
+          <!-- ALWAYS SHOW ALL FIELDS - Static text, no animations -->
+          <div class="incident-meta">
+            <!-- TRANSCRIPT STATUS -->
+            <div class="meta-item">
+              <div class="meta-label">Transcript</div>
+              <div class="meta-value">${
+                displayTranscript.includes("Processing") ||
+                displayTranscript.includes("Waiting") ||
+                displayTranscript.includes("Transcribing")
+                  ? "Processing transcript..."
+                  : "Complete"
+              }</div>
+            </div>
+
+            <!-- INCIDENT TYPE -->
+            <div class="meta-item">
+              <div class="meta-label">Classification</div>
+              <div class="meta-value">${
+                !incident.incident_type || incident.incident_type === "unknown"
+                  ? "Processing classification..."
+                  : formatIncidentType(incident.incident_type)
+              }</div>
+            </div>
+
+            <!-- ADDRESS -->
+            <div class="meta-item">
+              <div class="meta-label">Address</div>
+              <div class="meta-value">${
+                incident.formatted_address
+                  ? incident.formatted_address
+                  : incident.address
+                  ? incident.address + " (geocoding...)"
+                  : "Processing address..."
+              }</div>
+            </div>
+
+            <!-- COORDINATES -->
+            <div class="meta-item">
+              <div class="meta-label">Coordinates</div>
+              <div class="meta-value">${
+                incident.latitude && incident.longitude
+                  ? `${incident.latitude.toFixed(
+                      4
+                    )}, ${incident.longitude.toFixed(4)}`
+                  : "Processing location..."
+              }</div>
+            </div>
+
+            <!-- PROPERTY OWNER -->
+            <div class="meta-item">
+              <div class="meta-label">Property Owner</div>
+              <div class="meta-value">${
+                incident.property_owner &&
+                incident.property_owner !== null &&
+                incident.property_owner !== "" &&
+                incident.property_owner !== "null"
+                  ? incident.property_owner
+                  : incident.latitude && incident.longitude
+                  ? "Processing property info..."
+                  : "Pending location..."
+              }</div>
+            </div>
+
+            <!-- PROPERTY VALUE -->
+            <div class="meta-item">
+              <div class="meta-label">Assessed Value</div>
+              <div class="meta-value">${
+                incident.property_price &&
+                incident.property_price !== null &&
+                incident.property_price !== 0
+                  ? "$" + incident.property_price.toLocaleString()
+                  : incident.latitude && incident.longitude
+                  ? "Processing property info..."
+                  : "Pending location..."
+              }</div>
+            </div>
+
+            <!-- SYSTEM -->
+            <div class="meta-item">
+              <div class="meta-label">System</div>
+              <div class="meta-value">${incident.system || "Unknown"}</div>
+            </div>
+
+            <!-- DEPARTMENT -->
+            <div class="meta-item">
+              <div class="meta-label">Department</div>
+              <div class="meta-value">${incident.department || "Unknown"}</div>
+            </div>
+
+            <!-- CHANNEL -->
+            <div class="meta-item">
+              <div class="meta-label">Channel</div>
+              <div class="meta-value">${incident.channel || "Unknown"}</div>
+            </div>
+
+            <!-- FREQUENCY -->
+            <div class="meta-item">
+              <div class="meta-label">Frequency</div>
+              <div class="meta-value">${incident.frequency || "Unknown"}</div>
+            </div>
+
+            <!-- CONFIDENCE -->
+            <div class="meta-item">
+              <div class="meta-label">Confidence</div>
+              <div class="meta-value">${confidencePercent}%</div>
+            </div>
+          </div>
+
+          <!-- STREET VIEW - Only show when available, no fancy labels -->
           ${
             incident.streetview_url
               ? `
           <div class="incident-streetview">
-            <div class="streetview-label">
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-street-view"></i>
-                Street View - ${incident.formatted_address || "incident location"}
-              </div>
-              <span class="streetview-hint">Click to open full size</span>
-            </div>
+            <div class="streetview-label">Street View</div>
             <div class="streetview-container">
-              <img src="${incident.streetview_url}" alt="Street View of ${
-                    incident.formatted_address || "incident location"
-                  }" 
-                   class="streetview-image" loading="lazy" 
+              <img src="${incident.streetview_url}" 
+                   alt="Street View" 
+                   class="streetview-image" 
+                   loading="lazy" 
                    onerror="this.parentElement.parentElement.style.display='none'"
                    onclick="window.open('${incident.streetview_url}', '_blank')">
             </div>
@@ -1719,48 +2763,7 @@
               : ""
           }
 
-          <div class="incident-meta">
-            <div class="meta-item">
-              <div class="meta-label">System</div>
-              <div class="meta-value">${incident.system || "Unknown"}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">Department</div>
-              <div class="meta-value">${incident.department || "Unknown"}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">Channel</div>
-              <div class="meta-value">${incident.channel || "Unknown"}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">Frequency</div>
-              <div class="meta-value">${incident.frequency || "Unknown"}</div>
-            </div>
-            ${
-              incident.formatted_address
-                ? `
-            <div class="meta-item">
-              <div class="meta-label">Location</div>
-              <div class="meta-value">${incident.formatted_address}</div>
-            </div>
-            `
-                : ""
-            }
-            <div class="meta-item">
-              <div class="meta-label">Confidence</div>
-              <div class="meta-value">
-                <div class="confidence-meter">
-                  <div class="confidence-bar">
-                    <div class="confidence-fill" style="width: ${confidencePercent}%"></div>
-                  </div>
-                  <span class="confidence-text">${confidencePercent}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div class="incident-actions">
-            <!-- ALWAYS show audio button for every incident -->
             <button class="action-btn play" onclick="playAudio('${
               incident.audio_filename || "no-audio"
             }', '${incident.system} - ${incident.department}', ${incident.id})"
@@ -1778,13 +2781,12 @@
               }
             </button>
             
-            <!-- ONLY show "Show on Map" button for incidents with actual locations -->
             ${
               incident.formatted_address &&
               incident.formatted_address !== "Unknown" &&
               incident.formatted_address !== ""
                 ? `
-              <button class="action-btn" onclick="showOnMap(${incident.id})" title="Highlight this incident on map">
+              <button class="action-btn" onclick="showOnMap(${incident.id})">
                 <i class="fas fa-map-marker-alt"></i>
                 Show on Map
               </button>
@@ -1802,6 +2804,13 @@
             `
                 : ""
             }
+            
+            <button class="action-btn analytics-btn" onclick="showAnalytics(${
+              incident.id
+            })">
+              <i class="fas fa-chart-line"></i>
+              Analytics
+            </button>
           </div>
         `;
 
@@ -1973,6 +2982,9 @@
         // Calculate confidence percentage
         const confidencePercent = Math.round((incident.confidence || 0) * 100);
 
+        // Enhance transcript with callsign tooltips
+        const enhancedTranscript = enhanceCallsigns(incident.transcript);
+
         incidentEl.innerHTML = `
           <div class="incident-header">
             <span class="incident-type-badge ${typeClass}">
@@ -1982,7 +2994,7 @@
           </div>
 
           <div class="incident-transcript">
-            "${incident.transcript}"
+            "${enhancedTranscript}"
           </div>
 
           ${
@@ -1992,17 +3004,21 @@
             <div class="streetview-label">
               <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <i class="fas fa-street-view"></i>
-                Street View - ${incident.formatted_address || "incident location"}
+                Street View - ${
+                  incident.formatted_address || "incident location"
+                }
               </div>
               <span class="streetview-hint">Click to open full size</span>
             </div>
             <div class="streetview-container">
               <img src="${incident.streetview_url}" alt="Street View of ${
-                    incident.formatted_address || "incident location"
-                  }" 
+                  incident.formatted_address || "incident location"
+                }" 
                    class="streetview-image" loading="lazy" 
                    onerror="this.parentElement.parentElement.style.display='none'"
-                   onclick="window.open('${incident.streetview_url}', '_blank')">
+                   onclick="window.open('${
+                     incident.streetview_url
+                   }', '_blank')">
             </div>
           </div>
         `
@@ -2032,6 +3048,37 @@
             <div class="meta-item">
               <div class="meta-label">Location</div>
               <div class="meta-value">${incident.formatted_address}</div>
+            </div>
+            `
+                : ""
+            }
+            ${
+              incident.property_owner &&
+              incident.property_owner !== null &&
+              incident.property_owner !== "" &&
+              incident.property_owner !== "null"
+                ? `
+            <div class="meta-item">
+              <div class="meta-label">Property Owner</div>
+              <div class="meta-value">
+                <i class="fas fa-user" style="margin-right: 0.5rem; color: #64B5F6;"></i>
+                ${incident.property_owner}
+              </div>
+            </div>
+            `
+                : ""
+            }
+            ${
+              incident.property_price &&
+              incident.property_price !== null &&
+              incident.property_price !== 0
+                ? `
+            <div class="meta-item">
+              <div class="meta-label">Assessed Value</div>
+              <div class="meta-value">
+                <i class="fas fa-dollar-sign" style="margin-right: 0.5rem; color: #81C784;"></i>
+                $${incident.property_price.toLocaleString()}
+              </div>
             </div>
             `
                 : ""
@@ -2092,6 +3139,13 @@
             `
                 : ""
             }
+            
+            <button class="action-btn analytics-btn" onclick="showAnalytics(${
+              incident.id
+            })" title="View detailed analytics and metadata">
+              <i class="fas fa-chart-line"></i>
+              Analytics
+            </button>
           </div>
         `;
 
@@ -2136,16 +3190,27 @@
 
       // Clear all map markers
       function clearMapMarkers() {
-        incidentMarkers.forEach((marker) => incidentMap.removeLayer(marker));
-        incidentMarkers = [];
+        if (window.incidentMarkers) {
+          window.incidentMarkers.forEach((marker) =>
+            incidentMap.removeLayer(marker)
+          );
+        }
+        window.incidentMarkers = [];
         mapCounter = 0;
       }
 
       // Update Map with Incidents (with rate limiting)
       function updateMapWithIncidents(incidents) {
+        // Store incidents globally for color mode switching
+        window.allIncidents = incidents;
+
         // Clear existing markers
-        incidentMarkers.forEach((marker) => incidentMap.removeLayer(marker));
-        incidentMarkers = [];
+        if (window.incidentMarkers) {
+          window.incidentMarkers.forEach((marker) =>
+            incidentMap.removeLayer(marker)
+          );
+        }
+        window.incidentMarkers = [];
         mapCounter = 0;
 
         // Filter incidents with addresses
@@ -2166,16 +3231,50 @@
         });
 
         updateMapCounter();
+        updateMapLegend();
+      }
+
+      // Add markers to map without clearing existing ones (used for color mode switching)
+      function addMarkersToMap(incidents) {
+        console.log(
+          "addMarkersToMap called with",
+          incidents.length,
+          "incidents"
+        );
+
+        // Filter incidents with addresses
+        const incidentsWithAddresses = incidents.filter(
+          (incident) =>
+            incident.formatted_address &&
+            incident.formatted_address !== "Unknown" &&
+            incident.formatted_address !== ""
+        );
+
+        console.log(
+          "Filtered to",
+          incidentsWithAddresses.length,
+          "incidents with addresses"
+        );
+
+        // Add markers immediately without delay (since we're just changing colors)
+        incidentsWithAddresses.forEach((incident, index) => {
+          addIncidentToMap(incident);
+        });
+
+        updateMapCounter();
       }
 
       // Add Incident to Map using REAL coordinates from database
       function addIncidentToMap(incident) {
         // PREVENT DUPLICATES: Check if marker already exists for this incident
-        const existingMarker = incidentMarkers.find(
-          (m) => m.incidentId === incident.id
-        );
-        if (existingMarker) {
-          return;
+        if (window.incidentMarkers) {
+          const existingMarker = window.incidentMarkers.find(
+            (m) => m.incidentId === incident.id
+          );
+          if (existingMarker) {
+            console.log("Skipping duplicate marker for incident", incident.id);
+            return;
+          }
         }
 
         // Check if we have real coordinates from the enhanced geocoding
@@ -2197,6 +3296,37 @@
           incident.formatted_address === ""
         ) {
           return;
+        }
+      }
+
+      // Update existing marker on map when incident data changes
+      function updateIncidentMarker(incident) {
+        if (!window.incidentMarkers) return;
+
+        // Find existing marker
+        const existingMarkerIndex = window.incidentMarkers.findIndex(
+          (m) => m.incidentId === incident.id
+        );
+
+        if (existingMarkerIndex !== -1) {
+          // Remove old marker from map
+          const oldMarker = window.incidentMarkers[existingMarkerIndex];
+          if (oldMarker.marker && window.map) {
+            window.map.removeLayer(oldMarker.marker);
+          }
+
+          // Remove from array
+          window.incidentMarkers.splice(existingMarkerIndex, 1);
+        }
+
+        // Add updated marker (if it has coordinates)
+        if (incident.latitude && incident.longitude) {
+          const lat = parseFloat(incident.latitude);
+          const lng = parseFloat(incident.longitude);
+
+          if (!isNaN(lat) && !isNaN(lng)) {
+            createIncidentMarker(incident, lat, lng);
+          }
         }
       }
 
@@ -2238,6 +3368,364 @@
         const lng = coords.lng + (Math.random() - 0.5) * 0.004;
 
         createIncidentMarker(incident, lat, lng);
+      }
+
+      // Current color mode (default: incident-type)
+      let currentColorMode = "incident-type";
+
+      // Change color mode and refresh map
+      function changeColorMode() {
+        console.log("changeColorMode called");
+        const select = document.getElementById("colorMode");
+        currentColorMode = select.value;
+        console.log("New color mode:", currentColorMode);
+
+        // Check if map is initialized
+        if (!incidentMap) {
+          console.error("incidentMap is not initialized yet");
+          return;
+        }
+
+        // Update legend first
+        updateMapLegend();
+
+        // Refresh all markers with new color scheme
+        refreshMapColors();
+      }
+
+      // Refresh all markers with current color mode
+      function refreshMapColors() {
+        console.log("refreshMapColors called");
+        console.log("incidentMap available:", !!incidentMap);
+        console.log("window.incidentMarkers:", window.incidentMarkers);
+        console.log("window.allIncidents available:", !!window.allIncidents);
+        if (window.allIncidents) {
+          console.log(
+            "window.allIncidents length:",
+            window.allIncidents.length
+          );
+          console.log("First incident sample:", window.allIncidents[0]);
+        }
+
+        // Clear existing markers
+        if (window.incidentMarkers) {
+          console.log("Clearing", window.incidentMarkers.length, "markers");
+          window.incidentMarkers.forEach((marker) => {
+            if (incidentMap && typeof incidentMap.removeLayer === "function") {
+              incidentMap.removeLayer(marker);
+            } else {
+              console.error(
+                "incidentMap not available or removeLayer not a function"
+              );
+            }
+          });
+          window.incidentMarkers = [];
+        }
+
+        // Re-add all markers with new styling
+        console.log(
+          "window.allIncidents:",
+          window.allIncidents ? window.allIncidents.length : "undefined"
+        );
+        if (window.allIncidents && window.allIncidents.length > 0) {
+          console.log(
+            "Calling addMarkersToMap with",
+            window.allIncidents.length,
+            "incidents"
+          );
+          addMarkersToMap(window.allIncidents);
+        } else {
+          console.error(
+            "No incidents to display or window.allIncidents is undefined"
+          );
+        }
+      }
+
+      // Get incident severity level (High, Medium, Low)
+      function getIncidentSeverity(incidentType) {
+        const highSeverity = [
+          "Weapons/Shots Fired",
+          "Structure Fire",
+          "Assault/Domestic",
+          "Medical",
+          "Motor Vehicle Accident",
+          "Hazmat",
+          "Emergency Medical",
+          "Fire Response",
+          "medical_emergency",
+          "fire_emergency",
+          "domestic_disturbance",
+        ];
+
+        const mediumSeverity = [
+          "Alarm (Burglar/Panic)",
+          "Fire Alarm",
+          "Brush/Vehicle Fire",
+          "Gas/Electrical Hazard",
+          "Theft/Burglary",
+          "Missing Person",
+          "Police Response",
+          "Public Safety",
+          "police_operation",
+          "suspicious_activity",
+          "alarm_activation",
+          "traffic_violation",
+        ];
+
+        // Check for high severity first
+        if (
+          highSeverity.some((type) =>
+            incidentType.toLowerCase().includes(type.toLowerCase())
+          )
+        ) {
+          return "high";
+        }
+
+        // Check for medium severity
+        if (
+          mediumSeverity.some((type) =>
+            incidentType.toLowerCase().includes(type.toLowerCase())
+          )
+        ) {
+          return "medium";
+        }
+
+        // Default to low severity
+        return "low";
+      }
+
+      // Get time elapsed in hours
+      function getTimeElapsed(timeRecorded) {
+        console.log("Parsing time:", timeRecorded);
+
+        // Parse HH:MM:SS format (24-hour time)
+        const timeMatch = timeRecorded.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+        if (!timeMatch) {
+          console.error(
+            "Invalid time format. Expected HH:MM:SS, got:",
+            timeRecorded
+          );
+          return 0;
+        }
+
+        const [, hours, minutes, seconds] = timeMatch;
+        const incidentHour = parseInt(hours);
+        const incidentMinute = parseInt(minutes);
+        const incidentSecond = parseInt(seconds);
+
+        // Get current time
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentSecond = now.getSeconds();
+
+        // Calculate today's incident time
+        const today = new Date();
+        today.setHours(incidentHour, incidentMinute, incidentSecond, 0);
+
+        // Calculate time difference
+        const diffMs = now - today;
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        console.log(
+          "  Incident time:",
+          `${incidentHour}:${incidentMinute}:${incidentSecond}`
+        );
+        console.log(
+          "  Current time:",
+          `${currentHour}:${currentMinute}:${currentSecond}`
+        );
+        console.log("  Hours elapsed:", diffHours.toFixed(2));
+
+        // Handle case where incident is "tomorrow" (negative diff means future time today)
+        if (diffHours < 0) {
+          // Assume it's from yesterday
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const diffYesterday = (now - yesterday) / (1000 * 60 * 60);
+          console.log(
+            "  Assuming yesterday, hours elapsed:",
+            diffYesterday.toFixed(2)
+          );
+          return diffYesterday;
+        }
+
+        return diffHours;
+      }
+
+      // Function to update map legend based on current color mode
+      function updateMapLegend() {
+        const titleElement = document.getElementById("legend-title");
+        const contentElement = document.getElementById("legend-content");
+
+        if (!titleElement || !contentElement) return;
+
+        let legendContent = "";
+
+        if (currentColorMode === "incident-type") {
+          titleElement.innerHTML = "📍 Incident Categories";
+          legendContent = `
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #dc2626;"></div>
+              <span style="color: #cbd5e1">Medical Emergency</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #ea580c;"></div>
+              <span style="color: #cbd5e1">Fire Emergency</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #dc2626;"></div>
+              <span style="color: #cbd5e1">Vehicle Accident</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #2563eb;"></div>
+              <span style="color: #cbd5e1">Police Operation</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #7c3aed;"></div>
+              <span style="color: #cbd5e1">Suspicious Activity</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #d97706;"></div>
+              <span style="color: #cbd5e1">Traffic Violation</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #dc2626;"></div>
+              <span style="color: #cbd5e1">Domestic Issue</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #d97706;"></div>
+              <span style="color: #cbd5e1">Alarm</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #7c2d12;"></div>
+              <span style="color: #cbd5e1">Theft/Burglary</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #0891b2;"></div>
+              <span style="color: #cbd5e1">Welfare Check</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #16a34a;"></div>
+              <span style="color: #cbd5e1">Found Property</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #64748b;"></div>
+              <span style="color: #cbd5e1">Unknown</span>
+            </div>
+          `;
+        } else if (currentColorMode === "severity") {
+          titleElement.innerHTML = "🚨 Severity Levels";
+          legendContent = `
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 14px; height: 14px; border-radius: 50%; background: #dc2626; opacity: 0.9;"></div>
+              <span style="color: #cbd5e1; font-weight: 600;">High Priority</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b; opacity: 0.8;"></div>
+              <span style="color: #cbd5e1">Medium Priority</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; opacity: 0.7;"></div>
+              <span style="color: #cbd5e1">Low Priority</span>
+            </div>
+          `;
+        } else if (currentColorMode === "time-elapsed") {
+          titleElement.innerHTML = "⏱️ Time Elapsed";
+          legendContent = `
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444; opacity: 0.9;"></div>
+              <span style="color: #cbd5e1; font-weight: 600;">Very Recent (0-30 min)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 7px; height: 7px; border-radius: 50%; background: #f97316; opacity: 0.8;"></div>
+              <span style="color: #cbd5e1">Recent (30min-2hr)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; opacity: 0.7;"></div>
+              <span style="color: #cbd5e1">Older (2hr-6hr)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px">
+              <div style="width: 5px; height: 5px; border-radius: 50%; background: #64748b; opacity: 0.6;"></div>
+              <span style="color: #cbd5e1">Stale (6hr+)</span>
+            </div>
+          `;
+        }
+
+        contentElement.innerHTML = legendContent;
+      }
+
+      // Get color and size based on current mode
+      function getMarkerStyle(incident) {
+        let color, radius, opacity;
+
+        switch (currentColorMode) {
+          case "severity":
+            const severity = getIncidentSeverity(incident.incident_type);
+            switch (severity) {
+              case "high":
+                color = "#dc2626"; // Red - High Priority
+                radius = 10;
+                opacity = 0.9;
+                break;
+              case "medium":
+                color = "#f59e0b"; // Amber - Medium Priority
+                radius = 8;
+                opacity = 0.8;
+                break;
+              case "low":
+                color = "#10b981"; // Green - Low Priority
+                radius = 6;
+                opacity = 0.7;
+                break;
+            }
+            break;
+
+          case "time-elapsed":
+            const hoursElapsed = getTimeElapsed(incident.time_recorded);
+            console.log(
+              "Time-elapsed mode - incident",
+              incident.id,
+              "hours elapsed:",
+              hoursElapsed
+            );
+
+            if (hoursElapsed <= 0.5) {
+              // Very recent (0-30 minutes) - Bright red, large
+              color = "#ef4444";
+              radius = 12;
+              opacity = 0.9;
+              console.log("  -> Very recent (0-30min)");
+            } else if (hoursElapsed <= 2) {
+              // Recent (30min-2hr) - Orange, small
+              color = "#f97316";
+              radius = 7;
+              opacity = 0.8;
+              console.log("  -> Recent (30min-2hr)");
+            } else if (hoursElapsed <= 6) {
+              // Older (2hr-6hr) - Yellow, smaller
+              color = "#f59e0b";
+              radius = 6;
+              opacity = 0.7;
+              console.log("  -> Older (2hr-6hr)");
+            } else {
+              // Stale (6hr+) - Gray, smallest
+              color = "#64748b";
+              radius = 5;
+              opacity = 0.6;
+              console.log("  -> Stale (6hr+)");
+            }
+            break;
+
+          case "incident-type":
+          default:
+            color = getIncidentColor(incident.incident_type);
+            radius = 8;
+            opacity = 0.8;
+            break;
+        }
+
+        return { color, radius, opacity };
       }
 
       // Professional Color System Based on Actual Incident Types
@@ -2296,29 +3784,40 @@
 
       // Create marker with proper styling
       function createIncidentMarker(incident, lat, lng) {
+        console.log(
+          "createIncidentMarker called for incident",
+          incident.id,
+          "at",
+          lat,
+          lng
+        );
         if (!incidentMap) {
+          console.error("incidentMap not available");
           return;
         }
 
         const typeClass = getIncidentTypeClass(incident.incident_type);
 
-        // Use professional incident-type based color system
-        const markerColor = getIncidentColor(incident.incident_type);
+        // Get dynamic styling based on current color mode
+        const markerStyle = getMarkerStyle(incident);
+        console.log("Marker style:", markerStyle);
 
         try {
           const marker = L.circleMarker([lat, lng], {
-            radius: 8,
-            fillColor: markerColor,
+            radius: markerStyle.radius,
+            fillColor: markerStyle.color,
             color: "#ffffff",
             weight: 2,
-            opacity: 0.9,
-            fillOpacity: 0.8,
+            opacity: markerStyle.opacity,
+            fillOpacity: markerStyle.opacity * 0.8,
           }).addTo(incidentMap);
 
           const popupContent = `
           <div style="min-width: 280px; max-width: 320px;">
             <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
-              <span style="background: ${markerColor}; color: white; padding: 4px 12px; border-radius: 16px; font-size: 0.75rem; font-weight: 600;">
+              <span style="background: ${
+                markerStyle.color
+              }; color: white; padding: 4px 12px; border-radius: 16px; font-size: 0.75rem; font-weight: 600;">
                 ${formatIncidentType(incident.incident_type)}
               </span>
               <span style="color: #64748b; font-size: 0.875rem; font-weight: 500;">
@@ -2328,7 +3827,9 @@
             <div style="margin-bottom: 12px; font-weight: 600; color: #1e293b;">
               📡 ${incident.system} - ${incident.department}
             </div>
-            <div style="margin-bottom: 12px; font-style: italic; color: #334155; background: #f1f5f9; padding: 8px; border-radius: 8px; border-left: 3px solid ${markerColor};">
+            <div style="margin-bottom: 12px; font-style: italic; color: #334155; background: #f1f5f9; padding: 8px; border-radius: 8px; border-left: 3px solid ${
+              markerStyle.color
+            };">
               "${incident.transcript}"
             </div>
             <div style="margin-bottom: 8px; font-size: 0.875rem; color: #475569;">
@@ -2367,11 +3868,198 @@
 
           marker.bindPopup(popupContent);
           marker.incidentId = incident.id;
-          incidentMarkers.push(marker);
+          window.incidentMarkers.push(marker);
           mapCounter++;
+          console.log(
+            "Successfully created marker for incident",
+            incident.id,
+            "Total markers:",
+            window.incidentMarkers.length
+          );
         } catch (error) {
-          // Error creating marker - no action needed
+          console.error(
+            "Error creating marker for incident",
+            incident.id,
+            ":",
+            error
+          );
         }
+      }
+
+      // Helper function to create incident card HTML
+      function createIncidentCard(incident) {
+        const typeClass = getIncidentTypeClass(incident.incident_type);
+        const confidencePercent = Math.round((incident.confidence || 0) * 100);
+        const enhancedTranscript = enhanceCallsigns(incident.transcript);
+
+        return `
+          <div class="incident-card" data-incident-id="${incident.id}">
+            <div class="incident-header">
+              <span class="incident-type-badge ${typeClass}">
+                ${formatIncidentType(incident.incident_type)}
+              </span>
+              <span class="incident-time">${incident.time_recorded}</span>
+            </div>
+
+            <div class="incident-transcript">
+              "${enhancedTranscript}"
+            </div>
+
+            ${
+              incident.streetview_url
+                ? `
+            <div class="incident-streetview">
+              <div class="streetview-label">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <i class="fas fa-street-view"></i>
+                  Street View - ${
+                    incident.formatted_address || "incident location"
+                  }
+                </div>
+                <span class="streetview-hint">Click to open full size</span>
+              </div>
+              <div class="streetview-container">
+                <img src="${incident.streetview_url}" alt="Street View of ${
+                    incident.formatted_address || "incident location"
+                  }" 
+                     class="streetview-image" loading="lazy" 
+                     onerror="this.parentElement.parentElement.style.display='none'"
+                     onclick="window.open('${
+                       incident.streetview_url
+                     }', '_blank')">
+              </div>
+            </div>
+          `
+                : ""
+            }
+
+            <div class="incident-meta">
+              <div class="meta-item">
+                <div class="meta-label">System</div>
+                <div class="meta-value">${incident.system || "Unknown"}</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Department</div>
+                <div class="meta-value">${
+                  incident.department || "Unknown"
+                }</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Channel</div>
+                <div class="meta-value">${incident.channel || "Unknown"}</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">Frequency</div>
+                <div class="meta-value">${incident.frequency || "Unknown"}</div>
+              </div>
+              ${
+                incident.formatted_address
+                  ? `
+              <div class="meta-item">
+                <div class="meta-label">Location</div>
+                <div class="meta-value">${incident.formatted_address}</div>
+              </div>
+              `
+                  : ""
+              }
+              ${
+                incident.property_owner &&
+                incident.property_owner !== null &&
+                incident.property_owner !== "" &&
+                incident.property_owner !== "null"
+                  ? `
+              <div class="meta-item">
+                <div class="meta-label">Property Owner</div>
+                <div class="meta-value">
+                  <i class="fas fa-user" style="margin-right: 0.5rem; color: #64B5F6;"></i>
+                  ${incident.property_owner}
+                </div>
+              </div>
+              `
+                  : ""
+              }
+              ${
+                incident.property_price &&
+                incident.property_price !== null &&
+                incident.property_price !== 0
+                  ? `
+              <div class="meta-item">
+                <div class="meta-label">Assessed Value</div>
+                <div class="meta-value">
+                  <i class="fas fa-dollar-sign" style="margin-right: 0.5rem; color: #81C784;"></i>
+                  $${incident.property_price.toLocaleString()}
+                </div>
+              </div>
+              `
+                  : ""
+              }
+              <div class="meta-item">
+                <div class="meta-label">Confidence</div>
+                <div class="meta-value">
+                  <div class="confidence-meter">
+                    <div class="confidence-bar">
+                      <div class="confidence-fill" style="width: ${confidencePercent}%"></div>
+                    </div>
+                    <span class="confidence-text">${confidencePercent}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="incident-actions">
+              <button class="action-btn play" onclick="playAudio('${
+                incident.audio_filename || "no-audio"
+              }', '${incident.system} - ${incident.department}', ${
+          incident.id
+        })"
+                      ${
+                        !incident.audio_filename ||
+                        incident.audio_status === "missing"
+                          ? 'title="Audio not available" style="opacity: 0.7;" disabled'
+                          : ""
+                      }>
+                <i class="fas fa-play"></i>
+                ${
+                  !incident.audio_filename ||
+                  incident.audio_status === "missing"
+                    ? "No Audio"
+                    : "Play Audio"
+                }
+              </button>
+              
+              ${
+                incident.formatted_address &&
+                incident.formatted_address !== "Unknown" &&
+                incident.formatted_address !== ""
+                  ? `
+                <button class="action-btn" onclick="showOnMap(${incident.id})" title="Highlight this incident on map">
+                  <i class="fas fa-map-marker-alt"></i>
+                  Show on Map
+                </button>
+              `
+                  : ""
+              }
+              
+              ${
+                incident.maps_link
+                  ? `
+                <a href="${incident.maps_link}" target="_blank" class="action-btn">
+                  <i class="fas fa-external-link-alt"></i>
+                  Google Maps
+                </a>
+              `
+                  : ""
+              }
+              
+              <button class="action-btn analytics-btn" onclick="showAnalytics(${
+                incident.id
+              })" title="View detailed analytics and metadata">
+                <i class="fas fa-chart-line"></i>
+                Analytics
+              </button>
+            </div>
+          </div>
+        `;
       }
 
       // Helper Functions
@@ -2382,7 +4070,10 @@
       }
 
       function formatIncidentType(type) {
-        if (!type || type === "unknown") return "Unknown";
+        // Simple static text - NO animations, NO emojis
+        if (!type || type === "" || type === null) return "Processing...";
+        if (type === "unknown") return "Radio Communication";
+
         // Format incident type for display
         return type
           .replace(/_/g, " ")
@@ -2523,6 +4214,7 @@
           incidentElement.style.backgroundColor = "rgba(59, 130, 246, 0.15)"; // Clean blue highlight that matches the dashboard theme
           incidentElement.style.border = "2px solid var(--accent-blue)";
           incidentElement.style.transform = "scale(1.02)";
+          incidentElement.style.transformOrigin = "center center";
           incidentElement.style.transition = "all 0.3s ease";
           incidentElement.style.boxShadow =
             "0 4px 20px rgba(59, 130, 246, 0.3)";
@@ -2532,6 +4224,7 @@
             incidentElement.style.backgroundColor = originalBackground;
             incidentElement.style.border = "";
             incidentElement.style.transform = "scale(1)";
+            incidentElement.style.transformOrigin = "";
             incidentElement.style.boxShadow = "";
           }, 2000);
         }
@@ -2548,39 +4241,47 @@
 
       // Initialize address filter panel
       function initializeAddressFilter() {
-        const addressFilterToggle = document.getElementById('addressFilterToggle');
-        const addressFilterContent = document.getElementById('addressFilterContent');
-        const addressFilterButtons = document.querySelectorAll('[data-address-filter]');
+        const addressFilterToggle = document.getElementById(
+          "addressFilterToggle"
+        );
+        const addressFilterContent = document.getElementById(
+          "addressFilterContent"
+        );
+        const addressFilterButtons = document.querySelectorAll(
+          "[data-address-filter]"
+        );
 
         if (!addressFilterToggle || !addressFilterContent) {
-          console.log('Address filter elements not found');
+          console.log("Address filter elements not found");
           return;
         }
 
         // Ensure address filter panel starts expanded
-        addressFilterContent.classList.remove('collapsed');
-        addressFilterToggle.classList.remove('collapsed');
+        addressFilterContent.classList.remove("collapsed");
+        addressFilterToggle.classList.remove("collapsed");
 
         // Toggle address filter panel
-        addressFilterToggle.addEventListener('click', () => {
-          addressFilterContent.classList.toggle('collapsed');
-          addressFilterToggle.classList.toggle('collapsed');
+        addressFilterToggle.addEventListener("click", () => {
+          addressFilterContent.classList.toggle("collapsed");
+          addressFilterToggle.classList.toggle("collapsed");
         });
 
         // Address filter button handlers
-        addressFilterButtons.forEach(button => {
-          button.addEventListener('click', (e) => {
+        addressFilterButtons.forEach((button) => {
+          button.addEventListener("click", (e) => {
             e.preventDefault();
-            
+
             // Remove active class from all address filter buttons
-            addressFilterButtons.forEach(btn => btn.classList.remove('active'));
-            
+            addressFilterButtons.forEach((btn) =>
+              btn.classList.remove("active")
+            );
+
             // Add active class to clicked button
-            button.classList.add('active');
-            
+            button.classList.add("active");
+
             // Update current address filter
             currentAddressFilter = button.dataset.addressFilter;
-            
+
             // Update counters and re-apply current incident type filter
             updateAddressCounters();
             filterByType(currentFilter);
@@ -2589,7 +4290,7 @@
 
         // Initialize counters
         updateAddressCounters();
-        console.log('Address filter initialized');
+        console.log("Address filter initialized");
       }
 
       // Update address filter counters
@@ -2603,11 +4304,12 @@
         let noAddressCount = 0;
         let totalCount = allIncidents.length;
 
-        allIncidents.forEach(incident => {
-          const hasValidAddress = incident.formatted_address && 
-                                incident.formatted_address !== 'Unknown' && 
-                                incident.formatted_address.trim() !== '' &&
-                                incident.formatted_address !== 'Newton, MA, USA';
+        allIncidents.forEach((incident) => {
+          const hasValidAddress =
+            incident.formatted_address &&
+            incident.formatted_address !== "Unknown" &&
+            incident.formatted_address.trim() !== "" &&
+            incident.formatted_address !== "Newton, MA, USA";
 
           if (hasValidAddress) {
             withAddressCount++;
@@ -2616,22 +4318,1184 @@
           }
         });
 
-        updateAddressFilterDisplay(totalCount, withAddressCount, noAddressCount);
+        updateAddressFilterDisplay(
+          totalCount,
+          withAddressCount,
+          noAddressCount
+        );
       }
 
       // Update address filter display counters
       function updateAddressFilterDisplay(total, withAddress, noAddress) {
-        const totalEl = document.getElementById('totalAddressCount');
-        const withEl = document.getElementById('withAddressCount');
-        const noEl = document.getElementById('noAddressCount');
+        const totalEl = document.getElementById("totalAddressCount");
+        const withEl = document.getElementById("withAddressCount");
+        const noEl = document.getElementById("noAddressCount");
 
         if (totalEl) totalEl.textContent = total;
         if (withEl) withEl.textContent = withAddress;
         if (noEl) noEl.textContent = noAddress;
       }
 
+      // Callsign Modal Functions
+      function openCallsignModal() {
+        document.getElementById("callsignModal").classList.add("active");
+        document.body.style.overflow = "hidden"; // Prevent background scrolling
+      }
 
+      function closeCallsignModal() {
+        document.getElementById("callsignModal").classList.remove("active");
+        document.body.style.overflow = ""; // Restore scrolling
+      }
 
+      // Analytics Modal Functions
+      function showAnalytics(incidentId) {
+        console.log("🔍 Analytics button clicked for incident:", incidentId);
+        const incident = allIncidents.find((inc) => inc.id === incidentId);
+        if (!incident) {
+          console.error("❌ Incident not found:", incidentId);
+          console.log(
+            "Available incidents:",
+            allIncidents.map((i) => i.id)
+          );
+          return;
+        }
+
+        console.log("✅ Found incident:", incident);
+        const modal = document.getElementById("analyticsModal");
+        const content = document.getElementById("analyticsModalContent");
+
+        if (!modal) {
+          console.error("❌ Analytics modal element not found!");
+          return;
+        }
+
+        if (!content) {
+          console.error("❌ Analytics modal content element not found!");
+          return;
+        }
+
+        // Build analytics content
+        console.log("📊 Generating analytics content...");
+        content.innerHTML = generateAnalyticsContent(incident);
+
+        // Show modal
+        console.log("✅ Showing analytics modal");
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeAnalyticsModal() {
+        console.log("🔒 Closing analytics modal");
+        document.getElementById("analyticsModal").classList.remove("active");
+        document.body.style.overflow = "";
+      }
+
+      function generateAnalyticsContent(incident) {
+        const confidencePercent = Math.round((incident.confidence || 0) * 100);
+        const hasLocation =
+          incident.formatted_address && incident.latitude && incident.longitude;
+        const hasProperty = incident.property_owner || incident.property_price;
+        const hasAudio =
+          incident.audio_filename && incident.audio_status !== "missing";
+
+        return `
+          <div class="analytics-section">
+            <div class="analytics-section-title">
+              <i class="fas fa-info-circle"></i>
+              Core Incident Information
+            </div>
+            <div class="analytics-grid">
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-hashtag"></i>
+                  Incident ID
+                </div>
+                <div class="analytics-card-value large">${incident.id}</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-clock"></i>
+                  Time Recorded
+                </div>
+                <div class="analytics-card-value">${
+                  incident.time_recorded || "N/A"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-calendar"></i>
+                  Date Created
+                </div>
+                <div class="analytics-card-value">${
+                  incident.date_created || "N/A"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-tag"></i>
+                  Incident Type
+                </div>
+                <div class="analytics-card-value">${formatIncidentType(
+                  incident.incident_type
+                )}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="analytics-section">
+            <div class="analytics-section-title">
+              <i class="fas fa-microphone"></i>
+              Transcript & Audio
+            </div>
+            <div class="analytics-transcript">
+              "${incident.transcript || "No transcript available"}"
+            </div>
+            <div class="analytics-grid" style="margin-top: 1rem;">
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-percentage"></i>
+                  Transcription Confidence
+                </div>
+                <div class="analytics-card-value">
+                  ${confidencePercent}%
+                  <span class="analytics-badge ${
+                    confidencePercent >= 80
+                      ? "success"
+                      : confidencePercent >= 60
+                      ? "warning"
+                      : "error"
+                  }" style="margin-left: 0.5rem;">
+                    ${
+                      confidencePercent >= 80
+                        ? "High"
+                        : confidencePercent >= 60
+                        ? "Medium"
+                        : "Low"
+                    }
+                  </span>
+                </div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-file-audio"></i>
+                  Audio Status
+                </div>
+                <div class="analytics-card-value">
+                  <span class="analytics-badge ${
+                    hasAudio ? "success" : "error"
+                  }">
+                    ${hasAudio ? "✓ Available" : "✗ Missing"}
+                  </span>
+                </div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-file"></i>
+                  Audio Filename
+                </div>
+                <div class="analytics-card-value" style="font-size: 0.8rem; word-break: break-all;">
+                  ${incident.audio_filename || incident.filename || "N/A"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="analytics-section">
+            <div class="analytics-section-title">
+              <i class="fas fa-broadcast-tower"></i>
+              Radio System Information
+            </div>
+            <div class="analytics-grid">
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-network-wired"></i>
+                  System
+                </div>
+                <div class="analytics-card-value">${
+                  incident.system || "Unknown"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-building"></i>
+                  Department
+                </div>
+                <div class="analytics-card-value">${
+                  incident.department || "Unknown"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-hashtag"></i>
+                  Channel
+                </div>
+                <div class="analytics-card-value">${
+                  incident.channel || "Unknown"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-signal"></i>
+                  Frequency
+                </div>
+                <div class="analytics-card-value">${
+                  incident.frequency || "Unknown"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-wave-square"></i>
+                  Modulation
+                </div>
+                <div class="analytics-card-value">${
+                  incident.modulation || "N/A"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-id-badge"></i>
+                  Talkgroup ID
+                </div>
+                <div class="analytics-card-value">${
+                  incident.tgid || "N/A"
+                }</div>
+              </div>
+            </div>
+          </div>
+
+          ${
+            hasLocation
+              ? `
+          <div class="analytics-section">
+            <div class="analytics-section-title">
+              <i class="fas fa-map-marked-alt"></i>
+              Location Intelligence
+            </div>
+            <div class="analytics-grid">
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-map-pin"></i>
+                  Extracted Address
+                </div>
+                <div class="analytics-card-value">${
+                  incident.address || "N/A"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-map-marker-alt"></i>
+                  Formatted Address
+                </div>
+                <div class="analytics-card-value">${
+                  incident.formatted_address || "N/A"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-globe"></i>
+                  Latitude
+                </div>
+                <div class="analytics-card-value">${
+                  incident.latitude ? incident.latitude.toFixed(6) : "N/A"
+                }</div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-globe"></i>
+                  Longitude
+                </div>
+                <div class="analytics-card-value">${
+                  incident.longitude ? incident.longitude.toFixed(6) : "N/A"
+                }</div>
+              </div>
+              ${
+                incident.maps_link
+                  ? `
+              <div class="analytics-card" style="grid-column: 1 / -1;">
+                <div class="analytics-card-label">
+                  <i class="fas fa-external-link-alt"></i>
+                  Google Maps
+                </div>
+                <div class="analytics-card-value">
+                  <a href="${incident.maps_link}" target="_blank" class="analytics-link">
+                    Open in Google Maps <i class="fas fa-arrow-right"></i>
+                  </a>
+                </div>
+              </div>
+              `
+                  : ""
+              }
+              ${
+                incident.streetview_url
+                  ? `
+              <div class="analytics-card" style="grid-column: 1 / -1;">
+                <div class="analytics-card-label">
+                  <i class="fas fa-street-view"></i>
+                  Street View
+                </div>
+                <div class="analytics-card-value">
+                  <a href="${incident.streetview_url}" target="_blank" class="analytics-link">
+                    Open Street View <i class="fas fa-arrow-right"></i>
+                  </a>
+                </div>
+              </div>
+              `
+                  : ""
+              }
+            </div>
+          </div>
+          `
+              : `
+          <div class="analytics-section">
+            <div class="analytics-section-title">
+              <i class="fas fa-map-marked-alt"></i>
+              Location Intelligence
+            </div>
+            <div style="text-align: center; padding: 2rem; color: var(--light-400);">
+              <i class="fas fa-map-pin" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+              <p>No location data available for this incident</p>
+            </div>
+          </div>
+          `
+          }
+
+          ${
+            hasProperty
+              ? `
+          <div class="analytics-section">
+            <div class="analytics-section-title">
+              <i class="fas fa-home"></i>
+              Property Information
+            </div>
+            <div class="analytics-grid">
+              ${
+                incident.property_owner
+                  ? `
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-user"></i>
+                  Property Owner
+                </div>
+                <div class="analytics-card-value">${incident.property_owner}</div>
+              </div>
+              `
+                  : ""
+              }
+              ${
+                incident.property_price
+                  ? `
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-dollar-sign"></i>
+                  Assessed Value
+                </div>
+                <div class="analytics-card-value large">$${incident.property_price.toLocaleString()}</div>
+              </div>
+              `
+                  : ""
+              }
+            </div>
+          </div>
+          `
+              : ""
+          }
+
+          <div class="analytics-section">
+            <div class="analytics-section-title">
+              <i class="fas fa-cogs"></i>
+              Processing Pipeline
+            </div>
+            <div class="analytics-processing-timeline">
+              <div class="analytics-timeline-item">
+                <div class="analytics-timeline-title">
+                  <i class="fas fa-file-audio"></i> Audio Capture
+                </div>
+                <div class="analytics-timeline-desc">
+                  Audio file received from scanner at ${
+                    incident.time_recorded || "unknown time"
+                  }
+                </div>
+              </div>
+              <div class="analytics-timeline-item">
+                <div class="analytics-timeline-title">
+                  <i class="fas fa-microphone-alt"></i> Speech-to-Text Transcription
+                </div>
+                <div class="analytics-timeline-desc">
+                  Transcribed with ${confidencePercent}% confidence
+                  <span class="analytics-badge ${
+                    confidencePercent >= 80
+                      ? "success"
+                      : confidencePercent >= 60
+                      ? "warning"
+                      : "error"
+                  }" style="margin-left: 0.5rem;">
+                    ${
+                      confidencePercent >= 80
+                        ? "High Quality"
+                        : confidencePercent >= 60
+                        ? "Medium Quality"
+                        : "Low Quality"
+                    }
+                  </span>
+                </div>
+              </div>
+              <div class="analytics-timeline-item">
+                <div class="analytics-timeline-title">
+                  <i class="fas fa-robot"></i> AI Classification
+                </div>
+                <div class="analytics-timeline-desc">
+                  Classified as: <strong>${formatIncidentType(
+                    incident.incident_type
+                  )}</strong>
+                </div>
+              </div>
+              ${
+                hasLocation
+                  ? `
+              <div class="analytics-timeline-item">
+                <div class="analytics-timeline-title">
+                  <i class="fas fa-map-pin"></i> Location Extraction & Geocoding
+                </div>
+                <div class="analytics-timeline-desc">
+                  Address extracted and geocoded to coordinates (${
+                    incident.latitude ? incident.latitude.toFixed(4) : "N/A"
+                  }, ${
+                      incident.longitude ? incident.longitude.toFixed(4) : "N/A"
+                    })
+                </div>
+              </div>
+              `
+                  : ""
+              }
+              ${
+                hasProperty
+                  ? `
+              <div class="analytics-timeline-item">
+                <div class="analytics-timeline-title">
+                  <i class="fas fa-home"></i> Property Lookup
+                </div>
+                <div class="analytics-timeline-desc">
+                  Property information retrieved from public records
+                </div>
+              </div>
+              `
+                  : ""
+              }
+              <div class="analytics-timeline-item">
+                <div class="analytics-timeline-title">
+                  <i class="fas fa-check-circle"></i> Processing Complete
+                </div>
+                <div class="analytics-timeline-desc">
+                  Incident ready for display on dashboard
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="analytics-section">
+            <div class="analytics-section-title">
+              <i class="fas fa-database"></i>
+              Database Metadata
+            </div>
+            <div class="analytics-grid">
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-folder"></i>
+                  File Path
+                </div>
+                <div class="analytics-card-value" style="font-size: 0.75rem; word-break: break-all;">
+                  ${incident.filepath || "N/A"}
+                </div>
+              </div>
+              <div class="analytics-card">
+                <div class="analytics-card-label">
+                  <i class="fas fa-file-signature"></i>
+                  Original Filename
+                </div>
+                <div class="analytics-card-value" style="font-size: 0.8rem; word-break: break-all;">
+                  ${incident.original_filename || incident.filename || "N/A"}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Callsign Lookup Database
+      const callSignDatabase = {
+        // Patrol Units
+        491: "Patrol",
+        492: "Patrol",
+        493: "Patrol",
+        494: "Patrol",
+        495: "Patrol",
+        496: "Patrol",
+        497: "Patrol",
+        498: "Patrol",
+        499: "Patrol",
+        500: "Patrol",
+        501: "Patrol",
+        502: "Patrol",
+        503: "Patrol",
+        504: "Patrol",
+
+        // Supervisors & Command
+        505: "Patrol Supervisor",
+        506: "Patrol Supervisor",
+        507: "Patrol Supervisor",
+        508: "Patrol Supervisor",
+        509: "Detective Commander",
+        510: "Internal Affairs",
+        511: "IT Bureau Commander",
+        512: "Chief of Police",
+        513: "Superintendent",
+        514: "Detective Bureau Sergeant",
+        516: "Detective",
+        517: "Detective Bureau Sergeant",
+        518: "Detective",
+        519: "Detective",
+
+        // Traffic Bureau
+        520: "Traffic Bureau Commander",
+        521: "Mayor",
+        522: "Traffic",
+        523: "Traffic",
+        524: "Traffic",
+        525: "Traffic",
+        526: "Traffic",
+        527: "Detail Cruiser",
+        528: "Detail Cruiser",
+        529: "Detail Cruiser",
+        530: "Detail Cruiser",
+        531: "Traffic Sergeant",
+        532: "Patrol Lieutenant (I.O.D.)",
+        535: "Safety Officer",
+        537: "Commercial Vehicle Enforcement",
+        538: "Animal Control",
+        540: "Garage Maintenance",
+
+        // Special Operations & Support
+        600: "Dispatch Commander",
+        602: "Drug Unit/Task Force",
+        604: "Community Services",
+        610: "Special Operations Vehicle",
+        611: "Drug Unit/Task Force",
+
+        // 1300 Series - Community Services
+        1301: "Community Services",
+        1302: "Community Services",
+        1303: "Community Services Bureau Commander",
+        1304: "Community Services",
+        1305: "Community Services",
+        1306: "Parking Control",
+        1307: "Parking Control",
+        1308: "Parking Control",
+        1309: "Parking Control",
+        1313: "Drug Unit/Task Force",
+        1314: "Detective",
+        1315: "Detective",
+        1316: "Drug Unit/Task Force",
+        1319: "Community Services",
+        1320: "Community Services",
+        1321: "Community Service Bureau Sergeant",
+        1324: "Details Lieutenant",
+        1325: "Support Services Bureau Commander",
+
+        // 1200 Series - Special Operations
+        1256: "Special Operations Sergeant",
+        1257: "Special Operations Lieutenant",
+        1258: "Special Operations Bureau Commander",
+
+        // 1300 Series - Patrol Bureau
+        1340: "Fourth Platoon",
+        1341: "Patrol Bureau Commander",
+        1342: "Fourth Platoon",
+        1344: "POP Unit",
+        1345: "Patrol Bureau Commander",
+
+        // Motorcycles
+        MC1: "Motorcycle Unit",
+        MC2: "Motorcycle Unit",
+        MC3: "Motorcycle Unit",
+        MC4: "Motorcycle Unit",
+      };
+
+      // Function to identify and enhance callsigns in text
+      function enhanceCallsigns(text) {
+        if (!text) return text;
+
+        // Pattern to match Newton + number, or just numbers that could be callsigns
+        // Look for Newton followed by number, or standalone numbers (3-4 digits)
+        const patterns = [
+          /\b(Newton\s+)(\d{3,4})\b/gi, // Newton 491, Newton 1256, etc.
+          /\b(MC\d)\b/gi, // MC1, MC2, etc.
+          /\b(\d{3,4})\b/g, // Standalone 3-4 digit numbers
+        ];
+
+        let enhancedText = text;
+
+        // Process each pattern
+        patterns.forEach((pattern) => {
+          enhancedText = enhancedText.replace(
+            pattern,
+            (match, prefix, number) => {
+              // For "Newton XXX" pattern
+              if (prefix && prefix.toLowerCase().includes("newton")) {
+                const callsignInfo = callSignDatabase[number];
+                if (callsignInfo) {
+                  return `${prefix}<span class="callsign-tooltip" onclick="jumpToLastCallsign('${number}')">${number}<span class="callsign-tooltip-content"><i class="fas fa-id-badge"></i> ${callsignInfo}<span class="tooltip-hint">Click to find last use</span></span></span>`;
+                }
+                return match;
+              }
+
+              // For "MCX" pattern
+              if (match.match(/^MC\d$/i)) {
+                const callsignInfo = callSignDatabase[match.toUpperCase()];
+                if (callsignInfo) {
+                  return `<span class="callsign-tooltip" onclick="jumpToLastCallsign('${match.toUpperCase()}')">${match}<span class="callsign-tooltip-content"><i class="fas fa-id-badge"></i> ${callsignInfo}<span class="tooltip-hint">Click to find last use</span></span></span>`;
+                }
+                return match;
+              }
+
+              // For standalone numbers - only enhance if it's a known callsign
+              const callsignInfo = callSignDatabase[match];
+              if (callsignInfo) {
+                return `<span class="callsign-tooltip" onclick="jumpToLastCallsign('${match}')">${match}<span class="callsign-tooltip-content"><i class="fas fa-id-badge"></i> ${callsignInfo}<span class="tooltip-hint">Click to find last use</span></span></span>`;
+              }
+
+              return match;
+            }
+          );
+        });
+
+        return enhancedText;
+      }
+
+      // Function to find and jump to the last incident containing a specific callsign
+      function jumpToLastCallsign(callsign) {
+        console.log(`🔍 Searching for previous use of callsign: ${callsign}`);
+
+        // Get the current incident card that was clicked
+        const clickedElement = event.target.closest(".incident-card");
+        const currentIncidentId = clickedElement
+          ? parseInt(clickedElement.dataset.incidentId)
+          : null;
+
+        console.log(`Current incident ID: ${currentIncidentId}`);
+
+        // Get all incidents from allIncidents array (sorted by time, newest first)
+        if (!allIncidents || allIncidents.length === 0) {
+          showNotification(
+            `No incidents found with callsign ${callsign}`,
+            "info"
+          );
+          return;
+        }
+
+        // Search through incidents to find the PREVIOUS one with this callsign (older than current)
+        let foundIncident = null;
+        let foundCurrentIncident = false;
+
+        for (let i = 0; i < allIncidents.length; i++) {
+          const incident = allIncidents[i];
+          const transcript = incident.transcript || "";
+
+          // Create regex patterns to match the callsign
+          const patterns = [
+            new RegExp(`\\bNewton\\s+${callsign}\\b`, "i"), // Newton 498
+            new RegExp(`\\b${callsign}\\b`, "i"), // Standalone 498
+          ];
+
+          // Check if any pattern matches
+          const hasCallsign = patterns.some((pattern) =>
+            pattern.test(transcript)
+          );
+
+          if (hasCallsign) {
+            // If this is the current incident, mark it and continue searching
+            if (incident.id === currentIncidentId) {
+              foundCurrentIncident = true;
+              console.log(
+                `Found current incident at index ${i}, continuing search...`
+              );
+              continue; // Skip to next incident
+            }
+
+            // If we already passed the current incident, this is the previous one
+            if (foundCurrentIncident || currentIncidentId === null) {
+              foundIncident = incident;
+              console.log(
+                `Found previous incident ${incident.id} at index ${i}`
+              );
+              break;
+            }
+          }
+        }
+
+        if (foundIncident) {
+          console.log(
+            `✅ Found previous incident ${foundIncident.id} with callsign ${callsign}`
+          );
+
+          // Find the incident element in the DOM
+          const incidentElement = document.querySelector(
+            `[data-incident-id="${foundIncident.id}"]`
+          );
+
+          if (incidentElement) {
+            // Scroll to the incident
+            incidentElement.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+
+            // Add highlight effect
+            const originalBackground = incidentElement.style.backgroundColor;
+            const originalBorder = incidentElement.style.border;
+            const originalTransform = incidentElement.style.transform;
+            const originalBoxShadow = incidentElement.style.boxShadow;
+            const originalTransformOrigin =
+              incidentElement.style.transformOrigin;
+
+            incidentElement.style.backgroundColor = "rgba(59, 130, 246, 0.2)";
+            incidentElement.style.border = "2px solid var(--accent-blue)";
+            incidentElement.style.transform = "scale(1.02)";
+            incidentElement.style.transformOrigin = "center center";
+            incidentElement.style.transition = "all 0.3s ease";
+            incidentElement.style.boxShadow =
+              "0 4px 20px rgba(59, 130, 246, 0.4)";
+
+            // Show notification
+            const callsignInfo = callSignDatabase[callsign];
+            showNotification(
+              `📍 Found previous use: ${callsign} (${callsignInfo}) at ${foundIncident.time_recorded}`,
+              "success"
+            );
+
+            // Reset styling after 3 seconds
+            setTimeout(() => {
+              incidentElement.style.backgroundColor = originalBackground;
+              incidentElement.style.border = originalBorder;
+              incidentElement.style.transform = originalTransform;
+              incidentElement.style.boxShadow = originalBoxShadow;
+              incidentElement.style.transformOrigin = originalTransformOrigin;
+            }, 3000);
+          } else {
+            // Incident exists but not currently displayed (filtered out)
+            const callsignInfo = callSignDatabase[callsign];
+            showNotification(
+              `Found ${callsign} (${callsignInfo}) but it's filtered out. Show all incidents to see it.`,
+              "warning"
+            );
+          }
+        } else {
+          const callsignInfo = callSignDatabase[callsign];
+          if (foundCurrentIncident) {
+            showNotification(
+              `No earlier incidents found with callsign ${callsign} (${callsignInfo})`,
+              "info"
+            );
+          } else {
+            showNotification(
+              `No incidents found with callsign ${callsign} (${callsignInfo})`,
+              "info"
+            );
+          }
+        }
+      }
+
+      // Close modal when clicking outside of it
+      document.addEventListener("DOMContentLoaded", function () {
+        const modal = document.getElementById("callsignModal");
+        if (modal) {
+          modal.addEventListener("click", function (e) {
+            if (e.target === modal) {
+              closeCallsignModal();
+            }
+          });
+        }
+
+        const analyticsModal = document.getElementById("analyticsModal");
+        if (analyticsModal) {
+          analyticsModal.addEventListener("click", function (e) {
+            if (e.target === analyticsModal) {
+              closeAnalyticsModal();
+            }
+          });
+        }
+
+        // Close modals with Escape key
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") {
+            closeCallsignModal();
+            closeAnalyticsModal();
+          }
+        });
+      });
     </script>
+
+    <!-- Callsign Reference Modal -->
+    <div id="callsignModal" class="callsign-modal">
+      <div class="callsign-modal-content">
+        <div class="callsign-modal-header">
+          <h2>
+            <i class="fas fa-id-badge"></i>
+            Newton Police Call Signs Reference
+          </h2>
+          <button class="callsign-modal-close" onclick="closeCallsignModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="callsign-modal-body">
+          <!-- Patrol Units -->
+          <div class="callsign-category">
+            <div class="callsign-category-title">
+              <i class="fas fa-car"></i>
+              Patrol Units
+            </div>
+            <div class="callsign-grid">
+              <div class="callsign-item">
+                <div class="callsign-number">491-504</div>
+                <div class="callsign-description">Patrol</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">Centre</div>
+                <div class="callsign-description">
+                  Newton Centre Square Foot Route
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">Newtonville</div>
+                <div class="callsign-description">
+                  Newtonville Square Foot Route
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">Auburndale</div>
+                <div class="callsign-description">
+                  Auburndale Square Foot Route
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">Corner</div>
+                <div class="callsign-description">
+                  Newton Corner Square Foot Route
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">Highlands</div>
+                <div class="callsign-description">
+                  Newton Highlands Square Foot Route
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">West Newton</div>
+                <div class="callsign-description">
+                  West Newton Square Foot Route
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">Nonantum</div>
+                <div class="callsign-description">
+                  Nonantum Square Foot Route
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Supervisors & Command -->
+          <div class="callsign-category">
+            <div class="callsign-category-title">
+              <i class="fas fa-star"></i>
+              Supervisors & Command Staff
+            </div>
+            <div class="callsign-grid">
+              <div class="callsign-item">
+                <div class="callsign-number">505-508</div>
+                <div class="callsign-description">Patrol Supervisor</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">512</div>
+                <div class="callsign-description">Chief of Police</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">513</div>
+                <div class="callsign-description">Superintendent</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">521</div>
+                <div class="callsign-description">Mayor</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">532</div>
+                <div class="callsign-description">
+                  Patrol Lieutenant (I.O.D.)
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">535</div>
+                <div class="callsign-description">Safety Officer</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1341</div>
+                <div class="callsign-description">Patrol Bureau Commander</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1345</div>
+                <div class="callsign-description">Patrol Bureau Commander</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detective Bureau -->
+          <div class="callsign-category">
+            <div class="callsign-category-title">
+              <i class="fas fa-user-secret"></i>
+              Detective Bureau
+            </div>
+            <div class="callsign-grid">
+              <div class="callsign-item">
+                <div class="callsign-number">509</div>
+                <div class="callsign-description">Detective Commander</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">514</div>
+                <div class="callsign-description">
+                  Detective Bureau Sergeant
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">517</div>
+                <div class="callsign-description">
+                  Detective Bureau Sergeant
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">516</div>
+                <div class="callsign-description">Detective</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">518</div>
+                <div class="callsign-description">Detective</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">519</div>
+                <div class="callsign-description">Detective</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1314</div>
+                <div class="callsign-description">Detective</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1315</div>
+                <div class="callsign-description">Detective</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Traffic Bureau -->
+          <div class="callsign-category">
+            <div class="callsign-category-title">
+              <i class="fas fa-traffic-light"></i>
+              Traffic Bureau
+            </div>
+            <div class="callsign-grid">
+              <div class="callsign-item">
+                <div class="callsign-number">520</div>
+                <div class="callsign-description">Traffic Bureau Commander</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">531</div>
+                <div class="callsign-description">Traffic Sergeant</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">522-526</div>
+                <div class="callsign-description">Traffic</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">537-530</div>
+                <div class="callsign-description">Detail Cruisers</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">537</div>
+                <div class="callsign-description">
+                  Commercial Vehicle Enforcement
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">MC1-MC4</div>
+                <div class="callsign-description">Motorcycles</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Special Units -->
+          <div class="callsign-category">
+            <div class="callsign-category-title">
+              <i class="fas fa-shield-alt"></i>
+              Special Operations & Units
+            </div>
+            <div class="callsign-grid">
+              <div class="callsign-item">
+                <div class="callsign-number">510</div>
+                <div class="callsign-description">Internal Affairs</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">511</div>
+                <div class="callsign-description">
+                  Information Technology Bureau Commander
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">538</div>
+                <div class="callsign-description">Animal Control</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">540</div>
+                <div class="callsign-description">Garage Maintenance Truck</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">600</div>
+                <div class="callsign-description">Dispatch Commander</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">610</div>
+                <div class="callsign-description">
+                  Special Operations Vehicle
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1256</div>
+                <div class="callsign-description">
+                  Special Operations Sergeant
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1257</div>
+                <div class="callsign-description">
+                  Special Operations Lieutenant
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1258</div>
+                <div class="callsign-description">
+                  Special Operations Bureau Commander
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1313</div>
+                <div class="callsign-description">Drug Unit/Task Force</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1316</div>
+                <div class="callsign-description">Drug Unit/Task Force</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">602</div>
+                <div class="callsign-description">Drug Unit/Task Force</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">611</div>
+                <div class="callsign-description">Drug Unit/Task Force</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1324</div>
+                <div class="callsign-description">Details Lieutenant</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1325</div>
+                <div class="callsign-description">
+                  Support Services Bureau Commander
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1340</div>
+                <div class="callsign-description">Fourth Platoon</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1342</div>
+                <div class="callsign-description">Fourth Platoon</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1344</div>
+                <div class="callsign-description">POP Unit</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Community Services -->
+          <div class="callsign-category">
+            <div class="callsign-category-title">
+              <i class="fas fa-users"></i>
+              Community Services
+            </div>
+            <div class="callsign-grid">
+              <div class="callsign-item">
+                <div class="callsign-number">1303</div>
+                <div class="callsign-description">
+                  Community Services Bureau Commander
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1321</div>
+                <div class="callsign-description">
+                  Community Service Bureau Sergeant
+                </div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1301</div>
+                <div class="callsign-description">Community Services</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1302</div>
+                <div class="callsign-description">Community Services</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1304</div>
+                <div class="callsign-description">Community Services</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1305</div>
+                <div class="callsign-description">Community Services</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1319</div>
+                <div class="callsign-description">Community Services</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1320</div>
+                <div class="callsign-description">Community Services</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">604</div>
+                <div class="callsign-description">Community Services</div>
+              </div>
+              <div class="callsign-item">
+                <div class="callsign-number">1306-1309</div>
+                <div class="callsign-description">Parking Control</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Modal -->
+    <div id="analyticsModal" class="analytics-modal">
+      <div class="analytics-modal-content">
+        <div class="analytics-modal-header">
+          <h2 class="analytics-modal-title">
+            <i class="fas fa-chart-line"></i>
+            Incident Analytics
+          </h2>
+          <button class="analytics-modal-close" onclick="closeAnalyticsModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="analytics-modal-body" id="analyticsModalContent">
+          <!-- Content will be dynamically generated -->
+        </div>
+      </div>
+    </div>
   </body>
 </html>

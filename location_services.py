@@ -102,40 +102,51 @@ RE_NEIGHBORHOOD = re.compile(
 def _regex_extract(text: str) -> Optional[str]:
     """
     Quick deterministic wins, in priority order aligned with the spec.
+    Added length validation to prevent capturing too much text.
     """
     # 1) Full numbered address
     m = RE_ADDR_NUMBERED.search(text)
     if m:
+        # ONLY include number, street name, suffix, and optional unit
+        # Do NOT include city, state, or zip
         parts = [m.group("number"), m.group("street"), m.group("suf")]
         if m.group("unit"):
             parts.append(m.group("unit"))
-        out = " ".join(p for p in parts if p).strip()
-        tail = " ".join(
-            x for x in [m.group("city"), m.group("state"), m.group("zip")] if x
-        )
-        return f"{out}, {tail}" if tail else out
+        result = " ".join(p for p in parts if p).strip()
+        # Validate: numbered address shouldn't be longer than 50 chars
+        if len(result) <= 50:
+            return result
 
     # 2) Intersection
     m = RE_INTERSECTION.search(text)
     if m:
-        return f"{m.group('a')} & {m.group('b')}"
+        result = f"{m.group('a')} & {m.group('b')}"
+        # Validate: intersection shouldn't be longer than 60 chars
+        if len(result) <= 60:
+            return result
 
     # 3) Highway / exit
     m = RE_HIGHWAY.search(text)
     if m:
-        return m.group(1).strip()
+        result = m.group(1).strip()
+        # Validate: highway shouldn't be longer than 40 chars
+        if len(result) <= 40:
+            return result
 
     # 4) Street-only
     m = RE_STREET_ONLY.search(text)
     if m:
-        return f"{m.group('street')} {m.group('suf')}"
+        result = f"{m.group('street')} {m.group('suf')}"
+        # Validate: street name shouldn't be longer than 40 chars
+        if len(result) <= 40:
+            return result
 
     # 5) Named area
     # To avoid grabbing random proper nouns, require either a tag OR phrase appears with common area words in the text
     for m in RE_NEIGHBORHOOD.finditer(text):
         span = m.group(0).strip()
         # Heuristic: prefer ones that include a tag or are followed/preceded by "area/center/square/corner"
-        if m.group("tag"):
+        if m.group("tag") and len(span) <= 35:
             return span
     # Fallback second pass: accept bare place if nothing else matched
 
@@ -221,7 +232,7 @@ def extract_address(text: str) -> str:
     hit = _regex_extract(text)
     if hit:
         return hit
-    print("LLM Launched")
+    print(f"LLM Launched; processing address extraction for {text}")
     return _ask_heavy_llm(text)
 
 
@@ -250,12 +261,34 @@ def normalize_address(address: str) -> Optional[str]:
     return addr
 
 
-
 def geocode_newton(address: str):
+    """
+    Geocode an address, restricting results to Newton, MA only.
+    Uses bounds to ensure only Newton addresses are returned.
+    """
     q = f"{address}, Newton, MA"
-    res = gmaps.geocode(q, components={"administrative_area": "MA", "country": "US"})
+
+    # Newton, MA bounding box (southwest and northeast corners)
+    # This ensures we only get results within Newton city limits
+    bounds = {
+        "southwest": {"lat": 42.2869, "lng": -71.2687},  # SW corner of Newton
+        "northeast": {"lat": 42.3688, "lng": -71.1575},  # NE corner of Newton
+    }
+
+    # Request with strict Newton bounds and component filtering
+    res = gmaps.geocode(
+        q,
+        components={
+            "locality": "Newton",  # City must be Newton
+            "administrative_area": "MA",  # State must be MA
+            "country": "US",  # Country must be US
+        },
+        bounds=bounds,  # Prefer results within Newton bounds
+    )
+
     if not res:
         return None
+
     r = res[0]
     loc = r["geometry"]["location"]
     fa, pid = r["formatted_address"], r.get("place_id")
@@ -264,12 +297,25 @@ def geocode_newton(address: str):
     if fa == "Newton, MA, USA":
         return None
 
+    # CRITICAL: Check if coordinates are within Newton bounds FIRST
+    # This is more reliable than string matching because some addresses
+    # in Newton are labeled as "Chestnut Hill" or other neighborhood names
+    lat, lng = loc["lat"], loc["lng"]
+    if not (
+        bounds["southwest"]["lat"] <= lat <= bounds["northeast"]["lat"]
+        and bounds["southwest"]["lng"] <= lng <= bounds["northeast"]["lng"]
+    ):
+        return None
+
+    # Coordinates are in Newton - this is a valid Newton address
+    # even if Google labels it as Chestnut Hill or another neighborhood
+
     url = (
         f"https://www.google.com/maps/search/?api=1&query={quote_plus(fa)}&query_place_id={pid}"
         if pid
         else None
     )
-    return loc["lat"], loc["lng"], fa, url
+    return lat, lng, fa, url
 
 
 def streetview_url(lat: float, lng: float, size="640x400") -> str:
@@ -283,4 +329,28 @@ def streetview_url(lat: float, lng: float, size="640x400") -> str:
 
 
 if __name__ == "__main__":
-    print(streetview_url(42.3372, -71.2092))
+    test_transcript = "Newton Wellesley, 2014 Washington Street by the emergency room exit. I see a female party there. She states she was discharged from Newton Wellesley, and they refused to send her back to care one. Just check her well-being."
+
+    print("=" * 60)
+    print("Testing Location Services")
+    print("=" * 60)
+
+    # Step 1: Extract address from transcript
+    extracted = extract_address(test_transcript)
+    print(f"\n1. Extracted Address: {extracted}")
+
+    # Step 2: Geocode the extracted address
+    if extracted and extracted != "NONE":
+        result = geocode_newton(extracted)
+        if result:
+            lat, lng, formatted_addr, maps_url = result
+            print(f"\n2. Geocoding Success!")
+            print(f"   - Formatted Address: {formatted_addr}")
+            print(f"   - Coordinates: ({lat}, {lng})")
+            print(f"   - Maps URL: {maps_url}")
+        else:
+            print(f"\n2. Geocoding Failed - Address not found in Newton, MA")
+    else:
+        print(f"\n2. Geocoding Skipped - No valid address extracted")
+
+    print("\n" + "=" * 60)

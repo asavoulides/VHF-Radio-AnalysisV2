@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Police Scanner Database Viewer - Historic Analysis</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      header p {
+        font-size: 1.1em;
+        opacity: 0.9;
+      }
+
+      .stats-section {
+        padding: 30px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .stat-card h3 {
+        color: #667eea;
+        font-size: 2em;
+        margin-bottom: 5px;
+      }
+
+      .stat-card p {
+        color: #666;
+        font-size: 0.9em;
+      }
+
+      .filters-section {
+        padding: 30px;
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .filter-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .filter-group label {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #333;
+      }
+
+      .filter-group input,
+      .filter-group select {
+        padding: 10px;
+        border: 2px solid #e0e0e0;
+        border-radius: 5px;
+        font-size: 1em;
+        transition: border-color 0.3s;
+      }
+
+      .filter-group input:focus,
+      .filter-group select:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      button {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-size: 1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #5a6268;
+      }
+
+      .btn-success {
+        background: #28a745;
+        color: white;
+      }
+
+      .btn-success:hover {
+        background: #218838;
+      }
+
+      .btn-info {
+        background: #17a2b8;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1em;
+        transition: all 0.3s ease;
+      }
+
+      .btn-info:hover {
+        background: #138496;
+        transform: translateY(-2px);
+      }
+
+      .results-section {
+        padding: 30px;
+      }
+
+      .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .pagination {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .pagination button {
+        padding: 8px 15px;
+        font-size: 0.9em;
+      }
+
+      .pagination span {
+        color: #666;
+        font-weight: 600;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background: white;
+      }
+
+      th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #e0e0e0;
+        font-size: 0.9em;
+      }
+
+      tr:hover {
+        background: #f8f9fa;
+      }
+
+      .transcript-cell {
+        max-width: 400px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .incident-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 15px;
+        font-size: 0.85em;
+        font-weight: 600;
+        background: #e7f3ff;
+        color: #0066cc;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+      }
+
+      .loading::after {
+        content: "...";
+        animation: dots 1.5s infinite;
+      }
+
+      @keyframes dots {
+        0%,
+        20% {
+          content: ".";
+        }
+        40% {
+          content: "..";
+        }
+        60%,
+        100% {
+          content: "...";
+        }
+      }
+
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 20px 0;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+      }
+
+      .empty-state h3 {
+        font-size: 1.5em;
+        margin-bottom: 10px;
+      }
+
+      .detail-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        overflow-y: auto;
+      }
+
+      .modal-content {
+        background: white;
+        max-width: 800px;
+        margin: 50px auto;
+        border-radius: 15px;
+        padding: 30px;
+        position: relative;
+      }
+
+      .modal-close {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        font-size: 2em;
+        cursor: pointer;
+        color: #666;
+      }
+
+      .modal-close:hover {
+        color: #333;
+      }
+
+      .detail-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .detail-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 4px solid #667eea;
+      }
+
+      .detail-section-title {
+        font-size: 1.2em;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .detail-row {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 15px;
+        padding: 12px 0;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .detail-row:last-child {
+        border-bottom: none;
+      }
+
+      .detail-label {
+        font-weight: 600;
+        color: #555;
+        font-size: 0.95em;
+      }
+
+      .detail-value {
+        color: #333;
+        word-wrap: break-word;
+        line-height: 1.5;
+      }
+
+      .confidence-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .confidence-bar {
+        flex: 1;
+        height: 24px;
+        background: #e0e0e0;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .confidence-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+        transition: width 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.85em;
+      }
+
+      .confidence-text {
+        font-weight: 700;
+        color: #28a745;
+        min-width: 60px;
+        text-align: right;
+        font-size: 1.1em;
+      }
+
+      .transcript-box {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        line-height: 1.6;
+        color: #333;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .location-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .location-link:hover {
+        text-decoration: underline;
+      }
+
+      /* Result Card Styles */
+      .result-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border-left: 5px solid #667eea;
+        transition: all 0.3s ease;
+      }
+
+      .result-card:hover {
+        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+        transform: translateY(-2px);
+      }
+
+      .result-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+      }
+
+      .result-header strong {
+        font-size: 1.3em;
+        color: #667eea;
+        font-weight: 700;
+      }
+
+      .result-body {
+        margin-bottom: 15px;
+      }
+
+      .result-body p {
+        margin: 10px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        line-height: 1.6;
+      }
+
+      .result-body strong {
+        font-size: 1.1em;
+        min-width: 30px;
+      }
+
+      .result-footer {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .result-footer button {
+        padding: 8px 16px;
+        font-size: 0.9em;
+      }
+
+      /* Map Popup Styles */
+      .leaflet-popup-content {
+        min-width: 280px;
+      }
+
+      .popup-header {
+        font-size: 1.2em;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #f0f0f0;
+      }
+
+      .popup-info {
+        margin: 8px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .popup-info strong {
+        min-width: 80px;
+        color: #555;
+      }
+
+      .popup-confidence {
+        display: inline-block;
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.9em;
+      }
+
+      .popup-link {
+        display: inline-block;
+        margin-top: 10px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 8px 12px;
+        background: #f0f0f0;
+        border-radius: 6px;
+        transition: all 0.3s;
+      }
+
+      .popup-link:hover {
+        background: #667eea;
+        color: white;
+      }
+
+      /* Audio Player Styles */
+      .audio-player-container {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 15px;
+        border: 2px solid #667eea;
+      }
+
+      .audio-player-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        color: #667eea;
+        font-weight: 700;
+        font-size: 1.1em;
+      }
+
+      .audio-player {
+        width: 100%;
+        outline: none;
+      }
+
+      .audio-player::-webkit-media-controls-panel {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .audio-info {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #dee2e6;
+        font-size: 0.9em;
+        color: #666;
+      }
+
+      .audio-unavailable {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        padding: 15px;
+        border-radius: 8px;
+        color: #856404;
+        text-align: center;
+        margin-top: 15px;
+      }
+
+      @media (max-width: 768px) {
+        .filters-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        table {
+          font-size: 0.8em;
+        }
+
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Map Styles */
+      .map-section {
+        padding: 30px;
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      #map {
+        height: 600px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 20px;
+      }
+
+      .map-controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        flex-wrap: wrap;
+      }
+
+      .map-info {
+        background: #e3f2fd;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 15px;
+        display: none;
+      }
+
+      .map-info.active {
+        display: block;
+      }
+
+      .map-results {
+        margin-top: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .leaflet-draw-actions a {
+        background-color: #fff;
+        color: #333;
+      }
+    </style>
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>📊 Police Scanner Database Viewer</h1>
+        <p>Historic Analysis & Advanced Querying</p>
+      </header>
+
+      <!-- Statistics Section -->
+      <div class="stats-section">
+        <h2>Database Overview</h2>
+        <div class="stats-grid" id="statsGrid">
+          <div class="loading">Loading statistics</div>
+        </div>
+      </div>
+
+      <!-- Filters Section -->
+      <div class="filters-section">
+        <h2>Advanced Filters</h2>
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label for="startDate">Start Date</label>
+            <input type="date" id="startDate" />
+          </div>
+          <div class="filter-group">
+            <label for="endDate">End Date</label>
+            <input type="date" id="endDate" />
+          </div>
+          <div class="filter-group">
+            <label for="incidentType">Incident Type</label>
+            <select id="incidentType">
+              <option value="all">All Types</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="system">System</label>
+            <select id="system">
+              <option value="all">All Systems</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="transcriptSearch">Transcript Search</label>
+            <input
+              type="text"
+              id="transcriptSearch"
+              placeholder="Search in transcripts..."
+            />
+          </div>
+          <div class="filter-group">
+            <label for="addressSearch">Address Search</label>
+            <input
+              type="text"
+              id="addressSearch"
+              placeholder="Search addresses..."
+            />
+          </div>
+          <div class="filter-group">
+            <label for="minConfidence">Min Confidence (%)</label>
+            <input
+              type="number"
+              id="minConfidence"
+              min="0"
+              max="100"
+              placeholder="0-100"
+            />
+          </div>
+          <div class="filter-group">
+            <label for="orderBy">Sort By</label>
+            <select id="orderBy">
+              <option value="date_created DESC, time_recorded DESC">
+                Newest First
+              </option>
+              <option value="date_created ASC, time_recorded ASC">
+                Oldest First
+              </option>
+              <option value="confidence DESC">Highest Confidence</option>
+              <option value="confidence ASC">Lowest Confidence</option>
+              <option value="incident_type ASC">Incident Type</option>
+            </select>
+          </div>
+        </div>
+        <div class="button-group">
+          <button class="btn-primary" onclick="applyFilters()">
+            🔍 Search Database
+          </button>
+          <button class="btn-secondary" onclick="resetFilters()">
+            🔄 Reset Filters
+          </button>
+          <button class="btn-success" onclick="exportResults()">
+            📥 Export to CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Map Section -->
+      <div class="map-section">
+        <h2>🗺️ Location-Based Search</h2>
+        <p style="color: #666; margin-top: 10px">
+          Draw a shape on the map to find all incidents within that area
+        </p>
+
+        <div id="map"></div>
+
+        <div class="map-controls">
+          <button class="btn-primary" onclick="queryMapArea()">
+            🔍 Search Selected Area
+          </button>
+          <button class="btn-secondary" onclick="clearMapQuery()">
+            🗑️ Clear Selection
+          </button>
+          <button class="btn-info" onclick="showAllPoints()">
+            📍 Show All Points
+          </button>
+        </div>
+
+        <div class="map-info" id="mapInfo">
+          <strong>Search Results:</strong>
+          <span id="mapResultCount">0</span> incidents found in selected area
+        </div>
+
+        <div class="map-results" id="mapResults"></div>
+      </div>
+
+      <!-- Results Section -->
+      <div class="results-section">
+        <div class="results-header">
+          <h2>Query Results</h2>
+          <div class="pagination" id="paginationTop"></div>
+        </div>
+        <div id="resultsContainer">
+          <div class="empty-state">
+            <h3>🔍 Ready to Search</h3>
+            <p>
+              Configure your filters above and click "Search Database" to view
+              records
+            </p>
+          </div>
+        </div>
+        <div
+          class="pagination"
+          id="paginationBottom"
+          style="margin-top: 20px"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="detail-modal" id="detailModal">
+      <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2>Record Details</h2>
+        <div id="modalContent"></div>
+      </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script>
+      let currentPage = 1;
+      let currentFilters = {};
+      let totalPages = 1;
+
+      // Map variables
+      let map = null;
+      let drawnItems = null;
+      let currentPolygon = null;
+      let markersLayer = null; // Changed to FeatureGroup in initializeMap()
+
+      // Load initial data
+      document.addEventListener("DOMContentLoaded", () => {
+        loadStatistics();
+        loadFilterOptions();
+        initializeMap();
+      });
+
+      async function loadStatistics() {
+        try {
+          const response = await fetch("/api/stats");
+          const stats = await response.json();
+
+          const statsGrid = document.getElementById("statsGrid");
+          statsGrid.innerHTML = `
+                    <div class="stat-card">
+                        <h3>${stats.total_records.toLocaleString()}</h3>
+                        <p>Total Records</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${stats.first_date || "N/A"}</h3>
+                        <p>First Record</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${stats.last_date || "N/A"}</h3>
+                        <p>Last Record</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>${stats.db_size_mb.toFixed(2)} MB</h3>
+                        <p>Database Size</p>
+                    </div>
+                `;
+        } catch (error) {
+          console.error("Error loading statistics:", error);
+          document.getElementById("statsGrid").innerHTML =
+            '<div class="error">Failed to load statistics</div>';
+        }
+      }
+
+      async function loadFilterOptions() {
+        try {
+          const response = await fetch("/api/filters");
+          const filters = await response.json();
+
+          // Populate incident types
+          const incidentTypeSelect = document.getElementById("incidentType");
+          filters.incident_types.forEach((type) => {
+            const option = document.createElement("option");
+            option.value = type;
+            option.textContent = type;
+            incidentTypeSelect.appendChild(option);
+          });
+
+          // Populate systems
+          const systemSelect = document.getElementById("system");
+          filters.systems.forEach((sys) => {
+            const option = document.createElement("option");
+            option.value = sys;
+            option.textContent = sys;
+            systemSelect.appendChild(option);
+          });
+        } catch (error) {
+          console.error("Error loading filter options:", error);
+        }
+      }
+
+      function getFilters() {
+        return {
+          start_date: document.getElementById("startDate").value,
+          end_date: document.getElementById("endDate").value,
+          incident_type: document.getElementById("incidentType").value,
+          system: document.getElementById("system").value,
+          transcript_search: document.getElementById("transcriptSearch").value,
+          address_search: document.getElementById("addressSearch").value,
+          min_confidence: document.getElementById("minConfidence").value,
+          order_by: document.getElementById("orderBy").value,
+        };
+      }
+
+      async function applyFilters(page = 1) {
+        currentPage = page;
+        currentFilters = getFilters();
+
+        const resultsContainer = document.getElementById("resultsContainer");
+        resultsContainer.innerHTML =
+          '<div class="loading">Querying database</div>';
+
+        try {
+          const params = new URLSearchParams({ ...currentFilters, page: page });
+          const response = await fetch(`/api/query?${params}`);
+          const data = await response.json();
+
+          if (data.error) {
+            resultsContainer.innerHTML = `<div class="error">${data.error}</div>`;
+            return;
+          }
+
+          totalPages = data.pagination.total_pages;
+          displayResults(data.results);
+          updatePagination(data.pagination);
+        } catch (error) {
+          console.error("Error querying database:", error);
+          resultsContainer.innerHTML =
+            '<div class="error">Failed to query database</div>';
+        }
+      }
+
+      function displayResults(results) {
+        const resultsContainer = document.getElementById("resultsContainer");
+
+        if (results.length === 0) {
+          resultsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Results Found</h3>
+                        <p>Try adjusting your filters</p>
+                    </div>
+                `;
+          return;
+        }
+
+        let html = "<table><thead><tr>";
+        html +=
+          "<th>ID</th><th>Date</th><th>Time</th><th>Type</th><th>Transcript</th><th>Address</th><th>Confidence</th><th>Actions</th>";
+        html += "</tr></thead><tbody>";
+
+        results.forEach((record) => {
+          html += "<tr>";
+          html += `<td>${record.id}</td>`;
+          html += `<td>${record.date_created || "N/A"}</td>`;
+          html += `<td>${record.time_recorded || "N/A"}</td>`;
+          html += `<td><span class="incident-badge">${
+            record.incident_type || "Unknown"
+          }</span></td>`;
+          html += `<td class="transcript-cell" title="${(
+            record.transcript || "No transcript"
+          ).replace(/"/g, "&quot;")}">${
+            record.transcript || "No transcript"
+          }</td>`;
+          html += `<td>${
+            record.formatted_address || record.address || "Unknown"
+          }</td>`;
+          html += `<td>${
+            record.confidence
+              ? (record.confidence * 100).toFixed(1) + "%"
+              : "N/A"
+          }</td>`;
+          html += `<td>
+                    <button class="btn-primary" onclick="viewDetails(${record.id})" title="View Full Details">👁️</button>
+                    <button class="btn-success" onclick="playAudioInline(${record.id})" title="Play Audio" style="margin-left: 5px;">🔊</button>
+                </td>`;
+          html += "</tr>";
+        });
+
+        html += "</tbody></table>";
+        resultsContainer.innerHTML = html;
+      }
+
+      function updatePagination(pagination) {
+        const paginationHTML = `
+                <button class="btn-secondary" onclick="applyFilters(${
+                  pagination.page - 1
+                })" ${
+          pagination.page === 1 ? "disabled" : ""
+        }>◀ Previous</button>
+                <span>Page ${pagination.page} of ${
+          pagination.total_pages
+        } (${pagination.total_records.toLocaleString()} records)</span>
+                <button class="btn-secondary" onclick="applyFilters(${
+                  pagination.page + 1
+                })" ${
+          pagination.page === pagination.total_pages ? "disabled" : ""
+        }>Next ▶</button>
+            `;
+
+        document.getElementById("paginationTop").innerHTML = paginationHTML;
+        document.getElementById("paginationBottom").innerHTML = paginationHTML;
+      }
+
+      async function viewDetails(recordId) {
+        try {
+          const response = await fetch(`/api/record/${recordId}`);
+          const record = await response.json();
+
+          if (record.error) {
+            alert("Error loading record: " + record.error);
+            return;
+          }
+
+          // Organize data into sections
+          let html = '<div class="detail-grid">';
+
+          // Primary Information Section
+          html += '<div class="detail-section">';
+          html +=
+            '<div class="detail-section-title">📋 Primary Information</div>';
+
+          html += '<div class="detail-row">';
+          html += '<div class="detail-label">Record ID</div>';
+          html += `<div class="detail-value"><strong>#${record.id}</strong></div>`;
+          html += "</div>";
+
+          html += '<div class="detail-row">';
+          html += '<div class="detail-label">Date & Time</div>';
+          html += `<div class="detail-value"><strong>${
+            record.date_created || "N/A"
+          }</strong> at <strong>${
+            record.time_recorded || "N/A"
+          }</strong></div>`;
+          html += "</div>";
+
+          html += '<div class="detail-row">';
+          html += '<div class="detail-label">Incident Type</div>';
+          html += `<div class="detail-value"><span class="incident-badge">${
+            record.incident_type || "Unknown"
+          }</span></div>`;
+          html += "</div>";
+
+          // Confidence Score
+          if (record.confidence !== null && record.confidence !== undefined) {
+            const confidence = (parseFloat(record.confidence) || 0) * 100;
+            html += '<div class="detail-row">';
+            html += '<div class="detail-label">Confidence Score</div>';
+            html += `<div class="detail-value">
+                        <div class="confidence-container">
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${confidence}%">
+                                    ${
+                                      confidence >= 20
+                                        ? confidence.toFixed(1) + "%"
+                                        : ""
+                                    }
+                                </div>
+                            </div>
+                            <span class="confidence-text">${confidence.toFixed(
+                              1
+                            )}%</span>
+                        </div>
+                    </div>`;
+            html += "</div>";
+          }
+
+          html += "</div>"; // End Primary Information
+
+          // Location Information Section
+          if (
+            record.address ||
+            record.formatted_address ||
+            record.latitude ||
+            record.longitude
+          ) {
+            html += '<div class="detail-section">';
+            html +=
+              '<div class="detail-section-title">📍 Location Information</div>';
+
+            if (record.address) {
+              html += '<div class="detail-row">';
+              html += '<div class="detail-label">Address</div>';
+              html += `<div class="detail-value">${record.address}</div>`;
+              html += "</div>";
+            }
+
+            if (
+              record.formatted_address &&
+              record.formatted_address !== record.address
+            ) {
+              html += '<div class="detail-row">';
+              html += '<div class="detail-label">Formatted Address</div>';
+              html += `<div class="detail-value">${record.formatted_address}</div>`;
+              html += "</div>";
+            }
+
+            if (record.latitude && record.longitude) {
+              html += '<div class="detail-row">';
+              html += '<div class="detail-label">Coordinates</div>';
+              html += `<div class="detail-value">${parseFloat(
+                record.latitude
+              ).toFixed(6)}, ${parseFloat(record.longitude).toFixed(6)}</div>`;
+              html += "</div>";
+            }
+
+            if (record.maps_link) {
+              html += '<div class="detail-row">';
+              html += '<div class="detail-label">Google Maps</div>';
+              html += `<div class="detail-value"><a href="${record.maps_link}" target="_blank" class="location-link">🗺️ View on Maps</a></div>`;
+              html += "</div>";
+            }
+
+            if (record.streetview_url) {
+              html += '<div class="detail-row">';
+              html += '<div class="detail-label">Street View</div>';
+              html += `<div class="detail-value"><a href="${record.streetview_url}" target="_blank" class="location-link">👁️ View Street View</a></div>`;
+              html += "</div>";
+            }
+
+            html += "</div>"; // End Location Information
+          }
+
+          // Property Information Section
+          if (record.property_owner || record.property_price) {
+            html += '<div class="detail-section">';
+            html +=
+              '<div class="detail-section-title">🏠 Property Information</div>';
+
+            if (record.property_owner) {
+              html += '<div class="detail-row">';
+              html += '<div class="detail-label">Property Owner</div>';
+              html += `<div class="detail-value">${record.property_owner}</div>`;
+              html += "</div>";
+            }
+
+            if (record.property_price) {
+              html += '<div class="detail-row">';
+              html += '<div class="detail-label">Property Value</div>';
+              html += `<div class="detail-value">$${parseInt(
+                record.property_price
+              ).toLocaleString()}</div>`;
+              html += "</div>";
+            }
+
+            html += "</div>"; // End Property Information
+          }
+
+          // Radio System Information Section
+          html += '<div class="detail-section">';
+          html +=
+            '<div class="detail-section-title">📡 Radio System Information</div>';
+
+          if (record.system) {
+            html += '<div class="detail-row">';
+            html += '<div class="detail-label">System</div>';
+            html += `<div class="detail-value">${record.system}</div>`;
+            html += "</div>";
+          }
+
+          if (record.department) {
+            html += '<div class="detail-row">';
+            html += '<div class="detail-label">Department</div>';
+            html += `<div class="detail-value">${record.department}</div>`;
+            html += "</div>";
+          }
+
+          if (record.channel) {
+            html += '<div class="detail-row">';
+            html += '<div class="detail-label">Channel</div>';
+            html += `<div class="detail-value">${record.channel}</div>`;
+            html += "</div>";
+          }
+
+          if (record.frequency) {
+            html += '<div class="detail-row">';
+            html += '<div class="detail-label">Frequency</div>';
+            html += `<div class="detail-value">${record.frequency} MHz</div>`;
+            html += "</div>";
+          }
+
+          if (record.modulation) {
+            html += '<div class="detail-row">';
+            html += '<div class="detail-label">Modulation</div>';
+            html += `<div class="detail-value">${record.modulation}</div>`;
+            html += "</div>";
+          }
+
+          if (record.tgid) {
+            html += '<div class="detail-row">';
+            html += '<div class="detail-label">TGID</div>';
+            html += `<div class="detail-value">${record.tgid}</div>`;
+            html += "</div>";
+          }
+
+          html += "</div>"; // End Radio System Information
+
+          // Transcript Section
+          if (record.transcript) {
+            html += '<div class="detail-section">';
+            html += '<div class="detail-section-title">📝 Transcript</div>';
+            html += `<div class="transcript-box">${record.transcript}</div>`;
+            html += "</div>";
+          }
+
+          // Audio Player Section
+          html += '<div class="detail-section">';
+          html += '<div class="detail-section-title">🎵 Audio Playback</div>';
+
+          // Create audio player with unique ID
+          const audioId = `audioPlayer-${record.id}`;
+          const containerId = `audioPlayerSection-${record.id}`;
+
+          html += `<div id="${containerId}">`;
+          html += `<div class="audio-player-container">`;
+          html += `<div class="audio-player-header">`;
+          html += `<span>🔊</span><span>Audio Recording</span>`;
+          html += `</div>`;
+          html += `<audio id="${audioId}" class="audio-player" controls preload="metadata">`;
+          html += `<source src="/api/audio/${record.id}" type="audio/mpeg">`;
+          html += `Your browser does not support the audio element.`;
+          html += `</audio>`;
+          html += `<div class="audio-info">`;
+          html += `<div><strong>Recorded:</strong> ${
+            record.date_created || "N/A"
+          } at ${record.time_recorded || "N/A"}</div>`;
+          html += `<div><strong>File:</strong> ${
+            record.filename || "N/A"
+          }</div>`;
+          html += `</div>`;
+          html += `</div>`;
+          html += `</div>`;
+
+          html += "</div>"; // End Audio Player Section
+
+          // Set up audio player after modal is rendered
+          setTimeout(() => {
+            const audioElement = document.getElementById(audioId);
+            if (audioElement) {
+              audioElement.addEventListener("error", function () {
+                const container = document.getElementById(containerId);
+                if (container) {
+                  container.innerHTML =
+                    '<div class="audio-unavailable">⚠️ Audio file not available or has been deleted</div>';
+                }
+              });
+            }
+          }, 100);
+
+          // File Information Section
+          html += '<div class="detail-section">';
+          html += '<div class="detail-section-title">📁 File Information</div>';
+
+          if (record.filename) {
+            html += '<div class="detail-row">';
+            html += '<div class="detail-label">Filename</div>';
+            html += `<div class="detail-value" style="word-break: break-all;">${record.filename}</div>`;
+            html += "</div>";
+          }
+
+          if (record.filepath) {
+            html += '<div class="detail-row">';
+            html += '<div class="detail-label">File Path</div>';
+            html += `<div class="detail-value" style="word-break: break-all; font-size: 0.85em;">${record.filepath}</div>`;
+            html += "</div>";
+          }
+
+          html += "</div>"; // End File Information
+
+          html += "</div>"; // End detail-grid
+
+          document.getElementById("modalContent").innerHTML = html;
+          document.getElementById("detailModal").style.display = "block";
+        } catch (error) {
+          console.error("Error loading record details:", error);
+          alert("Failed to load record details");
+        }
+      }
+
+      function closeModal() {
+        document.getElementById("detailModal").style.display = "none";
+      }
+
+      function resetFilters() {
+        document.getElementById("startDate").value = "";
+        document.getElementById("endDate").value = "";
+        document.getElementById("incidentType").value = "all";
+        document.getElementById("system").value = "all";
+        document.getElementById("transcriptSearch").value = "";
+        document.getElementById("addressSearch").value = "";
+        document.getElementById("minConfidence").value = "";
+        document.getElementById("orderBy").value =
+          "date_created DESC, time_recorded DESC";
+
+        document.getElementById("resultsContainer").innerHTML = `
+                <div class="empty-state">
+                    <h3>🔍 Ready to Search</h3>
+                    <p>Configure your filters above and click "Search Database" to view records</p>
+                </div>
+            `;
+        document.getElementById("paginationTop").innerHTML = "";
+        document.getElementById("paginationBottom").innerHTML = "";
+      }
+
+      async function exportResults() {
+        if (
+          !confirm("Export current query results to CSV? (Max 10,000 records)")
+        ) {
+          return;
+        }
+
+        try {
+          const params = new URLSearchParams(currentFilters);
+          window.location.href = `/api/export?${params}`;
+        } catch (error) {
+          console.error("Error exporting:", error);
+          alert("Failed to export results");
+        }
+      }
+
+      // Close modal on outside click
+      window.onclick = function (event) {
+        const modal = document.getElementById("detailModal");
+        if (event.target === modal) {
+          closeModal();
+        }
+      };
+
+      // ==================== AUDIO PLAYBACK FUNCTIONS ====================
+
+      let currentAudio = null;
+
+      function playAudioInline(recordId) {
+        // Stop any currently playing audio
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
+
+        // Create and play new audio
+        currentAudio = new Audio(`/api/audio/${recordId}`);
+
+        currentAudio.addEventListener("error", function () {
+          alert("⚠️ Audio file not available or has been deleted");
+          currentAudio = null;
+        });
+
+        currentAudio.addEventListener("ended", function () {
+          currentAudio = null;
+        });
+
+        currentAudio.play().catch((error) => {
+          console.error("Error playing audio:", error);
+          alert("Failed to play audio: " + error.message);
+          currentAudio = null;
+        });
+      }
+
+      // ==================== MAP FUNCTIONS ====================
+
+      function initializeMap() {
+        // Initialize map centered on Newton, MA
+        map = L.map("map").setView([42.337, -71.2092], 13);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+          maxZoom: 19,
+        }).addTo(map);
+
+        // Initialize drawing layer
+        drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        // Initialize markers layer (use FeatureGroup for getBounds() support)
+        markersLayer = new L.FeatureGroup();
+        map.addLayer(markersLayer);
+
+        // Drawing control
+        const drawControl = new L.Control.Draw({
+          draw: {
+            polyline: false,
+            circle: false,
+            circlemarker: false,
+            marker: false,
+            polygon: {
+              allowIntersection: false,
+              showArea: true,
+              shapeOptions: {
+                color: "#667eea",
+                fillColor: "#667eea",
+                fillOpacity: 0.3,
+              },
+            },
+            rectangle: {
+              shapeOptions: {
+                color: "#667eea",
+                fillColor: "#667eea",
+                fillOpacity: 0.3,
+              },
+            },
+          },
+          edit: {
+            featureGroup: drawnItems,
+            remove: true,
+          },
+        });
+        map.addControl(drawControl);
+
+        // Drawing event handlers
+        map.on(L.Draw.Event.CREATED, function (event) {
+          const layer = event.layer;
+
+          // Clear previous drawings
+          drawnItems.clearLayers();
+          currentPolygon = null;
+
+          // Add new drawing
+          drawnItems.addLayer(layer);
+
+          // Store polygon coordinates
+          if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+            currentPolygon = layer
+              .getLatLngs()[0]
+              .map((latlng) => [latlng.lat, latlng.lng]);
+          }
+        });
+
+        map.on(L.Draw.Event.DELETED, function () {
+          currentPolygon = null;
+          document.getElementById("mapInfo").classList.remove("active");
+          document.getElementById("mapResults").innerHTML = "";
+        });
+      }
+
+      async function queryMapArea() {
+        if (!currentPolygon || currentPolygon.length < 3) {
+          alert("Please draw a polygon or rectangle on the map first!");
+          return;
+        }
+
+        console.log("Starting map query...");
+        console.log("Polygon:", currentPolygon);
+
+        try {
+          // Get current filters
+          const filters = {
+            start_date: document.getElementById("startDate").value,
+            end_date: document.getElementById("endDate").value,
+            incident_type: document.getElementById("incidentType").value,
+            system: document.getElementById("system").value,
+          };
+
+          console.log("Filters:", filters);
+
+          const requestBody = {
+            polygon: currentPolygon,
+            filters: filters,
+          };
+
+          console.log("Request body:", requestBody);
+
+          const response = await fetch("/api/map_query", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          console.log("Response status:", response.status);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Error response:", errorText);
+            throw new Error(`Query failed: ${response.status} - ${errorText}`);
+          }
+
+          const data = await response.json();
+          console.log("Received data:", data);
+
+          // Display results
+          document.getElementById("mapResultCount").textContent = data.total;
+          document.getElementById("mapInfo").classList.add("active");
+
+          // Clear existing markers
+          markersLayer.clearLayers();
+
+          // Add markers for each result
+          const resultsHtml = data.results
+            .map((record) => {
+              // Parse confidence and convert to percentage
+              const confidence = (parseFloat(record.confidence) || 0) * 100;
+
+              // Add marker to map with enhanced popup
+              if (record.latitude && record.longitude) {
+                const popupContent = `
+                            <div class="popup-header">${
+                              record.incident_type || "Unknown Type"
+                            }</div>
+                            <div class="popup-info">
+                                <strong>📅 Date:</strong>
+                                <span>${record.date_created || "N/A"}</span>
+                            </div>
+                            <div class="popup-info">
+                                <strong>⏰ Time:</strong>
+                                <span>${record.time_recorded || "N/A"}</span>
+                            </div>
+                            <div class="popup-info">
+                                <strong>📍 Location:</strong>
+                                <span>${
+                                  record.address ||
+                                  record.formatted_address ||
+                                  "No address"
+                                }</span>
+                            </div>
+                            <div class="popup-info">
+                                <strong>📡 System:</strong>
+                                <span>${record.system || "N/A"} - ${
+                  record.department || "N/A"
+                }</span>
+                            </div>
+                            ${
+                              record.channel
+                                ? `
+                            <div class="popup-info">
+                                <strong>📻 Channel:</strong>
+                                <span>${record.channel}</span>
+                            </div>`
+                                : ""
+                            }
+                            <div class="popup-info">
+                                <strong>🎯 Confidence:</strong>
+                                <span class="popup-confidence">${confidence.toFixed(
+                                  1
+                                )}%</span>
+                            </div>
+                            ${
+                              record.transcript
+                                ? `
+                            <div class="popup-info" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                                <strong>📝 Transcript:</strong>
+                            </div>
+                            <div style="font-size: 0.9em; color: #555; margin-top: 5px; max-height: 100px; overflow-y: auto;">
+                                ${record.transcript.substring(0, 200)}${
+                                    record.transcript.length > 200 ? "..." : ""
+                                  }
+                            </div>`
+                                : ""
+                            }
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <a href="#" onclick="playAudioInline(${
+                                  record.id
+                                }); return false;" class="popup-link" style="flex: 1; text-align: center;">
+                                    🔊 Play Audio
+                                </a>
+                                <a href="#" onclick="viewDetails(${
+                                  record.id
+                                }); return false;" class="popup-link" style="flex: 1; text-align: center;">
+                                    📋 View Details
+                                </a>
+                            </div>
+                        `;
+
+                const marker = L.marker([
+                  record.latitude,
+                  record.longitude,
+                ]).bindPopup(popupContent, { maxWidth: 350 });
+                markersLayer.addLayer(marker);
+              }
+
+              // Create enhanced result card
+              return `
+                        <div class="result-card">
+                            <div class="result-header">
+                                <strong>${
+                                  record.incident_type || "Unknown Type"
+                                }</strong>
+                                <span class="badge" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 6px 14px; border-radius: 20px; font-weight: 600;">
+                                    ${confidence.toFixed(1)}% confidence
+                                </span>
+                            </div>
+                            <div class="result-body">
+                                <p><strong>📅</strong> <span>${
+                                  record.date_created || "N/A"
+                                } at ${record.time_recorded || "N/A"}</span></p>
+                                <p><strong>📍</strong> <span>${
+                                  record.address ||
+                                  record.formatted_address ||
+                                  "No address available"
+                                }</span></p>
+                                <p><strong>�</strong> <span>${
+                                  record.system || "Unknown System"
+                                } - ${
+                record.department || "Unknown Department"
+              }</span></p>
+                                ${
+                                  record.channel
+                                    ? `<p><strong>📻</strong> <span>${record.channel}</span></p>`
+                                    : ""
+                                }
+                                ${
+                                  record.frequency
+                                    ? `<p><strong>📶</strong> <span>${record.frequency} MHz</span></p>`
+                                    : ""
+                                }
+                                ${
+                                  record.transcript
+                                    ? `
+                                <p style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                                    <strong>📝</strong> 
+                                    <span style="color: #555;">${record.transcript.substring(
+                                      0,
+                                      200
+                                    )}${
+                                        record.transcript.length > 200
+                                          ? "..."
+                                          : ""
+                                      }</span>
+                                </p>`
+                                    : ""
+                                }
+                            </div>
+                            <div class="result-footer">
+                                <button class="btn-info" onclick="viewDetails(${
+                                  record.id
+                                })">📋 View Full Details</button>
+                                <button class="btn-success" onclick="playAudioInline(${
+                                  record.id
+                                })">🔊 Play Audio</button>
+                                ${
+                                  record.latitude && record.longitude
+                                    ? `<button class="btn-secondary" onclick="map.setView([${record.latitude}, ${record.longitude}], 17); setTimeout(() => { markersLayer.eachLayer(layer => { if (layer.getLatLng().lat === ${record.latitude} && layer.getLatLng().lng === ${record.longitude}) { layer.openPopup(); } }); }, 100);">📍 Show on Map</button>`
+                                    : ""
+                                }
+                                ${
+                                  record.maps_link
+                                    ? `<button class="btn-success" onclick="window.open('${record.maps_link}', '_blank')">🗺️ Google Maps</button>`
+                                    : ""
+                                }
+                            </div>
+                        </div>
+                    `;
+            })
+            .join("");
+
+          document.getElementById("mapResults").innerHTML =
+            resultsHtml ||
+            '<p style="padding: 20px; text-align: center; color: #666;">No incidents found in selected area</p>';
+
+          // Fit map to show all markers
+          if (data.results.length > 0 && markersLayer.getLayers().length > 0) {
+            const bounds = markersLayer.getBounds();
+            if (bounds.isValid()) {
+              map.fitBounds(bounds, { padding: [50, 50] });
+            }
+          }
+        } catch (error) {
+          console.error("Error querying map area:", error);
+          alert(`Failed to query map area: ${error.message}`);
+        }
+      }
+
+      function clearMapQuery() {
+        drawnItems.clearLayers();
+        markersLayer.clearLayers();
+        currentPolygon = null;
+        document.getElementById("mapInfo").classList.remove("active");
+        document.getElementById("mapResults").innerHTML = "";
+      }
+
+      async function showAllPoints() {
+        try {
+          // Get all records with coordinates (limited to recent ones for performance)
+          const filters = {
+            order_by: "date_created DESC, time_recorded DESC",
+          };
+
+          const params = new URLSearchParams({
+            ...filters,
+            page: 1,
+            page_size: 500, // Show up to 500 most recent points
+          });
+
+          const response = await fetch(`/api/query?${params}`);
+          if (!response.ok) throw new Error("Failed to load points");
+
+          const data = await response.json();
+
+          // Clear existing markers
+          markersLayer.clearLayers();
+
+          let addedMarkers = 0;
+          data.results.forEach((record) => {
+            if (record.latitude && record.longitude) {
+              const marker = L.marker([record.latitude, record.longitude])
+                .bindPopup(`
+                                <strong>${
+                                  record.incident_type || "Unknown"
+                                }</strong><br>
+                                ${record.address || "No address"}<br>
+                                ${record.date_created} ${
+                record.time_recorded
+              }<br>
+                                <a href="#" onclick="viewDetails(${
+                                  record.id
+                                }); return false;">View Details</a>
+                            `);
+              markersLayer.addLayer(marker);
+              addedMarkers++;
+            }
+          });
+
+          // Fit map to show all markers
+          if (addedMarkers > 0 && markersLayer.getLayers().length > 0) {
+            const bounds = markersLayer.getBounds();
+            if (bounds.isValid()) {
+              map.fitBounds(bounds, { padding: [50, 50] });
+            }
+            alert(
+              `Showing ${addedMarkers} most recent incidents with location data`
+            );
+          } else {
+            alert("No location data available");
+          }
+        } catch (error) {
+          console.error("Error showing all points:", error);
+          alert("Failed to load all points");
+        }
+      }
+    </script>
+  </body>
+</html>
