@@ -8,14 +8,16 @@ conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 
 # Get all dates with data
-cursor.execute("""
+cursor.execute(
+    """
     SELECT date_created, COUNT(*) as total, 
            SUM(CASE WHEN incident_type = 'unknown' THEN 1 ELSE 0 END) as unknown_count
     FROM audio_metadata
     GROUP BY date_created
     ORDER BY date_created DESC
     LIMIT 10
-""")
+"""
+)
 
 rows = cursor.fetchall()
 
@@ -36,18 +38,25 @@ if rows:
     most_recent_date = rows[0][0]
     print(f"\nSample 'unknown' incidents from {most_recent_date}:")
     print(f"{'='*80}\n")
-    
-    cursor.execute("""
+
+    cursor.execute(
+        """
         SELECT id, filename, transcript, incident_type
         FROM audio_metadata
         WHERE date_created = ? AND incident_type = 'unknown'
         ORDER BY id DESC
         LIMIT 5
-    """, (most_recent_date,))
-    
+    """,
+        (most_recent_date,),
+    )
+
     unknown_samples = cursor.fetchall()
     for incident_id, filename, transcript, incident_type in unknown_samples:
-        trans_preview = (transcript[:80] + "...") if transcript and len(transcript) > 80 else (transcript or "[NO TRANSCRIPT]")
+        trans_preview = (
+            (transcript[:80] + "...")
+            if transcript and len(transcript) > 80
+            else (transcript or "[NO TRANSCRIPT]")
+        )
         print(f"ID: {incident_id}")
         print(f"Filename: {filename}")
         print(f"Type: {incident_type}")

@@ -11,14 +11,16 @@ cursor = conn.cursor()
 today = datetime.now().date()
 
 # Query for unknown incident types
-cursor.execute("""
+cursor.execute(
+    """
     SELECT id, incident_type, transcript, date_created, filename
     FROM audio_metadata 
     WHERE date_created = date('now', 'localtime') 
     AND incident_type = 'unknown'
     ORDER BY id DESC
     LIMIT 10
-""")
+"""
+)
 
 rows = cursor.fetchall()
 total_unknown = len(rows)
@@ -38,19 +40,23 @@ for row in rows:
     print("-" * 80)
 
 # Get total count for today
-cursor.execute("""
+cursor.execute(
+    """
     SELECT COUNT(*) 
     FROM audio_metadata 
     WHERE date_created = date('now', 'localtime') 
     AND incident_type = 'unknown'
-""")
+"""
+)
 total_count = cursor.fetchone()[0]
 
-cursor.execute("""
+cursor.execute(
+    """
     SELECT COUNT(*) 
     FROM audio_metadata 
     WHERE date_created = date('now', 'localtime')
-""")
+"""
+)
 all_count = cursor.fetchone()[0]
 
 print(f"\n{'='*80}")

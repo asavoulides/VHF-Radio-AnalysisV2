@@ -1,5 +1,8 @@
 import sys
-sys.path.append(r"c:\Users\alexa\OneDrive\Desktop\Folders\Scripts\Python\Local Police Scanner Analysis")
+
+sys.path.append(
+    r"c:\Users\alexa\OneDrive\Desktop\Folders\Scripts\Python\Local Police Scanner Analysis"
+)
 
 import incident_helper
 
@@ -11,9 +14,9 @@ test_transcripts = [
     "4, we'll head that way. Cancel 2. Roger. I have it. Thank you for",  # 14 words
 ]
 
-print("\n" + "="*80)
+print("\n" + "=" * 80)
 print("TESTING CLASSIFICATION ON LONGER TRANSCRIPTS")
-print("="*80 + "\n")
+print("=" * 80 + "\n")
 
 for i, transcript in enumerate(test_transcripts, 1):
     word_count = len(transcript.split())
@@ -24,5 +27,6 @@ for i, transcript in enumerate(test_transcripts, 1):
     except Exception as e:
         print(f"  ✗ ERROR: {e}")
         import traceback
+
         traceback.print_exc()
     print("-" * 80)
